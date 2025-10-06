@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   CssBaseline,
   ThemeProvider,
@@ -57,7 +57,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedHumanBeing, setSelectedHumanBeing] = useState<HumanBeing | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  // const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
@@ -73,15 +73,15 @@ function App() {
     }
   };
 
-  const handleAdd = () => {
-    setSelectedHumanBeing(null);
-    setDialogOpen(true);
-  };
+  // const handleAdd = () => {
+  //   setSelectedHumanBeing(null);
+  //   setDialogOpen(true);
+  // };
 
-  const handleEdit = (humanBeing: HumanBeing) => {
-    setSelectedHumanBeing(humanBeing);
-    setDialogOpen(true);
-  };
+  // const handleEdit = (humanBeing: HumanBeing) => {
+  //   setSelectedHumanBeing(humanBeing);
+  //   setDialogOpen(true);
+  // };
 
   const handleDialogClose = () => {
     setDialogOpen(false);
@@ -89,7 +89,7 @@ function App() {
   };
 
   const handleDialogSave = () => {
-    setRefreshTrigger(prev => prev + 1);
+    // setRefreshTrigger(prev => prev + 1);
   };
 
   const CurrentPageComponent = pageConfig[currentPage].component;

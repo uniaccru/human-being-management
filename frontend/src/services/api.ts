@@ -1,7 +1,9 @@
 import axios, { AxiosResponse } from 'axios';
-import { HumanBeing, CreateHumanBeingRequest, ApiError, Car } from '../types';
+import { HumanBeing, CreateHumanBeingRequest, Car } from '../types';
 
-const API_BASE_URL = '/api';
+// Use different API URLs for different environments
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 
+  (window.location.hostname === 'localhost' ? 'http://localhost:8080/api' : '/api');
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

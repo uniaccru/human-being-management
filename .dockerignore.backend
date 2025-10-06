@@ -1,0 +1,12 @@
+# Backend .dockerignore
+target/
+*.log
+.git/
+.gitignore
+README.md
+Dockerfile*
+docker-compose*
+.dockerignore
+frontend/
+node_modules/
+*.md

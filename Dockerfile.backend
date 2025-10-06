@@ -1,0 +1,31 @@
+# Backend Dockerfile
+FROM openjdk:11-jdk-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy Maven files
+COPY pom.xml .
+COPY src ./src
+
+# Install Maven
+RUN apt-get update && \
+    apt-get install -y maven && \
+    rm -rf /var/lib/apt/lists/*
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# Expose port
+EXPOSE 8080
+
+# Set environment variables
+ENV DATABASE_URL=jdbc:postgresql://db:5432/humanbeingdb
+ENV PGUSER=postgres
+ENV PGPASSWORD=password
+ENV PGHOST=db
+ENV PGPORT=5432
+ENV PGDATABASE=humanbeingdb
+
+# Run the application
+CMD ["mvn", "jetty:run", "-Djetty.port=8080", "-Djetty.host=0.0.0.0"]
