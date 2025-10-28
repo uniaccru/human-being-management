@@ -1,7 +1,6 @@
 import axios, { AxiosResponse } from 'axios';
 import { HumanBeing, CreateHumanBeingRequest, Car } from '../types';
 
-// Use different API URLs for different environments
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 
   (window.location.hostname === 'localhost' ? 'http://localhost:8080/api' : '/api');
 

@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
   db:
     image: postgres:13
     environment:
@@ -18,7 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend Service
   backend:
     build:
       context: .
@@ -38,13 +36,12 @@ services:
     volumes:
       - ./backend.log:/app/backend.log
 
-  # Frontend Service
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_URL: http://localhost:8080/api
+        VITE_API_URL: /api
     ports:
       - "5001:5001"
     depends_on:
