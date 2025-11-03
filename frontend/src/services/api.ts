@@ -1,18 +1,15 @@
 import axios, { AxiosResponse } from 'axios';
 import { HumanBeing, CreateHumanBeingRequest, Car } from '../types';
 
-// Для WildFly: если приложение деплоится на /human-being-manager/, используем относительный путь
 const getApiBaseUrl = () => {
   const envUrl = (import.meta as any).env?.VITE_API_URL;
   if (envUrl) return envUrl;
   
-  // Если запускаем на localhost (dev режим)
   if (window.location.hostname === 'localhost' && window.location.port !== '24180') {
     return 'http://localhost:8080/api';
   }
   
-  // Для production на WildFly используем относительный путь
-  // Если base path /human-being-manager/, то API будет /human-being-manager/api
+
   return '/human-being-manager/api';
 };
 
@@ -29,20 +26,16 @@ const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Проверяем message (для стандартных ответов)
     if (error.response?.data?.message) {
       return Promise.reject(new Error(error.response.data.message));
     }
-    // Проверяем error (для обратной совместимости)
     if (error.response?.data?.error) {
       return Promise.reject(new Error(error.response.data.error));
     }
-    // Проверяем data (для объектов с детальной информацией)
     if (error.response?.data?.data?.errors) {
       const errors = error.response.data.data.errors;
       return Promise.reject(new Error('Validation errors: ' + (Array.isArray(errors) ? errors.join(', ') : errors)));
     }
-    // Общая ошибка
     if (error.message) {
       return Promise.reject(new Error(error.message));
     }

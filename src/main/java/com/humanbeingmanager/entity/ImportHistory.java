@@ -12,7 +12,7 @@ public class ImportHistory {
     private Long id;
     
     @Column(name = "status", nullable = false)
-    private String status; // SUCCESS, FAILED
+    private String status; 
     
     @Column(name = "username")
     private String username;
@@ -47,8 +47,7 @@ public class ImportHistory {
         this.failedCount = failedCount;
         this.errorMessage = errorMessage;
     }
-    
-    // Getters and Setters
+
     public Long getId() {
         return id;
     }

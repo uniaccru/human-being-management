@@ -19,7 +19,6 @@ public class ApiResponseDto<T> {
         this.data = data;
     }
 
-    // Статические методы для удобства
     public static <T> ApiResponseDto<T> success(T data) {
         return new ApiResponseDto<>(true, "Success", data);
     }
@@ -36,7 +35,6 @@ public class ApiResponseDto<T> {
         return new ApiResponseDto<>(false, "Validation error: " + message, null);
     }
 
-    // Getters and setters
     public boolean isSuccess() {
         return success;
     }

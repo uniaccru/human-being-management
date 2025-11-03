@@ -139,8 +139,6 @@ public class HumanBeingDao {
             query.setParameter("excludeId", excludeId);
         }
         
-        // Используем PESSIMISTIC_WRITE для блокировки строк при проверке уникальности координат
-        // Это предотвращает race condition при одновременном создании объектов с одинаковыми координатами
         query.setLockMode(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
         
         List<HumanBeing> results = query.getResultList();

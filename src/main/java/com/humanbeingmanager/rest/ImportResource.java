@@ -44,8 +44,7 @@ public class ImportResource {
             }
 
             ImportResult result = humanBeingService.importHumanBeings(humanBeings);
-            
-            // Сохраняем историю импорта
+
             String username = System.getProperty("user.name", "Unknown");
             String status = result.isSuccess() ? "SUCCESS" : "FAILED";
             ImportHistory history = new ImportHistory(
@@ -68,11 +67,9 @@ public class ImportResource {
             
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error importing HumanBeings", e);
-            
-            // Детальное сообщение об ошибке
+
             String errorMessage = "Import failed: " + e.getMessage();
-            
-            // Сохраняем историю для неудачного импорта
+
             String username = System.getProperty("user.name", "Unknown");
             ImportHistory history = new ImportHistory(
                 "FAILED",

@@ -110,20 +110,15 @@ const HumanBeingTable: React.FC<HumanBeingTableProps> = ({
   const formatDate = (date: Date | string | number | undefined) => {
     if (!date) return 'N/A';
     try {
-      // Handle different date formats: number (timestamp), string, or Date object
       let dateObj: Date;
       if (typeof date === 'number') {
-        // If it's a number, treat it as timestamp (milliseconds)
         dateObj = new Date(date);
       } else if (typeof date === 'string') {
-        // If it's a string, parse it
         dateObj = new Date(date);
       } else {
-        // If it's already a Date object
         dateObj = date;
       }
       
-      // Check if date is valid
       if (isNaN(dateObj.getTime())) {
         return 'Invalid Date';
       }

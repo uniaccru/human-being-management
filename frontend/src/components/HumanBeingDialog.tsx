@@ -78,7 +78,6 @@ const HumanBeingDialog: React.FC<HumanBeingDialogProps> = ({
   const weaponType = watch('weaponType');
   const impactSpeed = watch('impactSpeed');
 
-  // Автоматическая установка impactSpeed=20 для MACHINE_GUN
   useEffect(() => {
     if (weaponType === WeaponType.MACHINE_GUN && (impactSpeed === 0 || impactSpeed === null || impactSpeed === undefined)) {
       setValue('impactSpeed', 20, { shouldValidate: true });
@@ -386,7 +385,6 @@ const HumanBeingDialog: React.FC<HumanBeingDialogProps> = ({
                   name="impactSpeed"
                   control={control}
                   render={({ field }) => {
-                    // Проверка для MACHINE_GUN
                     const isMachineGun = weaponType === WeaponType.MACHINE_GUN;
                     const hasError = !!errors.impactSpeed || (isMachineGun && field.value < 20);
                     const helperText = hasError 

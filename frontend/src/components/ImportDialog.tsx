@@ -48,20 +48,15 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
   const formatDate = (date: Date | string | number | undefined) => {
     if (!date) return 'N/A';
     try {
-      // Handle different date formats: number (timestamp), string, or Date object
       let dateObj: Date;
       if (typeof date === 'number') {
-        // If it's a number, treat it as timestamp (milliseconds)
         dateObj = new Date(date);
       } else if (typeof date === 'string') {
-        // If it's a string, parse it
         dateObj = new Date(date);
       } else {
-        // If it's already a Date object
         dateObj = date;
       }
       
-      // Check if date is valid
       if (isNaN(dateObj.getTime())) {
         return 'Invalid Date';
       }
@@ -86,7 +81,6 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Сброс предыдущих результатов
     setError(null);
     setResult(null);
     setLoading(true);
@@ -101,7 +95,6 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
         throw new Error('Invalid JSON format: ' + (jsonError as Error).message);
       }
 
-      // Проверяем, что это массив
       if (!Array.isArray(humanBeings)) {
         throw new Error('JSON должен содержать массив объектов');
       }
@@ -109,7 +102,6 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
       const importResult = await ImportApi.importHumanBeings(humanBeings);
       setResult(importResult);
 
-      // Перезагружаем историю после импорта
       await loadHistory(setHistory, setHistoryLoading);
 
       if (importResult.success) {
@@ -118,17 +110,13 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
         }, 2000);
       }
     } catch (err: any) {
-      // Обрабатываем ошибки более детально
       let errorMessage = 'Ошибка при импорте файла';
       
       if (err.response?.data?.message) {
-        // Ошибка от сервера
         errorMessage = err.response.data.message;
       } else if (err.message) {
-        // Ошибка клиента (парсинг JSON и т.д.)
         errorMessage = err.message;
       } else if (err.response?.data?.data?.errors) {
-        // Ошибки валидации
         errorMessage = 'Validation errors: ' + err.response.data.data.errors.join(', ');
       }
       

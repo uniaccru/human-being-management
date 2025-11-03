@@ -31,7 +31,6 @@ public class ImportResult {
         return new ImportResult(false, errorMessage, totalProcessed, successfullyImported, failed, errors);
     }
 
-    // Getters and setters
     public boolean isSuccess() {
         return success;
     }

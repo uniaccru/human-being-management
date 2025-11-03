@@ -53,12 +53,10 @@ public class HumanBeingService {
         LOGGER.log(Level.INFO, "Creating new HumanBeing: {0}", humanBeing.getName());
         
         try {
-            // Устанавливаем creationDate автоматически при создании
             if (humanBeing.getCreationDate() == null) {
                 humanBeing.setCreationDate(new java.util.Date());
             }
-            
-            // Обработка MACHINE_GUN: устанавливаем impactSpeed = 20 если не заполнено
+
             applyMachineGunDefault(humanBeing);
             
             validateHumanBeing(humanBeing);
@@ -75,11 +73,9 @@ public class HumanBeingService {
             
             return created;
         } catch (ValidationException e) {
-            // Явно откатываем транзакцию при ошибке валидации
             sessionContext.setRollbackOnly();
             throw e;
         } catch (Exception e) {
-            // Откатываем транзакцию при любой другой ошибке
             sessionContext.setRollbackOnly();
             throw new RuntimeException("Failed to create HumanBeing: " + e.getMessage(), e);
         }
@@ -95,7 +91,6 @@ public class HumanBeingService {
                 throw new EntityNotFoundException("HumanBeing with ID " + humanBeing.getId() + " not found");
             }
             
-            // Сохраняем существующий creationDate
             HumanBeing existing = humanBeingDao.findById(humanBeing.getId()).orElseThrow(
                 () -> {
                     sessionContext.setRollbackOnly();
@@ -105,8 +100,7 @@ public class HumanBeingService {
             if (humanBeing.getCreationDate() == null) {
                 humanBeing.setCreationDate(existing.getCreationDate());
             }
-            
-            // Обработка MACHINE_GUN: устанавливаем impactSpeed = 20 если не заполнено
+
             applyMachineGunDefault(humanBeing);
             
             validateHumanBeing(humanBeing);
@@ -126,11 +120,9 @@ public class HumanBeingService {
             
             return updated;
         } catch (ValidationException | EntityNotFoundException e) {
-            // Явно откатываем транзакцию при ошибке валидации или если объект не найден
             sessionContext.setRollbackOnly();
             throw e;
         } catch (Exception e) {
-            // Откатываем транзакцию при любой другой ошибке
             sessionContext.setRollbackOnly();
             throw new RuntimeException("Failed to update HumanBeing: " + e.getMessage(), e);
         }
@@ -176,11 +168,9 @@ public class HumanBeingService {
             
             return deleted;
         } catch (EntityNotFoundException e) {
-            // Явно откатываем транзакцию если объект не найден
             sessionContext.setRollbackOnly();
             throw e;
         } catch (Exception e) {
-            // Откатываем транзакцию при любой другой ошибке
             sessionContext.setRollbackOnly();
             throw new RuntimeException("Failed to delete HumanBeing: " + e.getMessage(), e);
         }
@@ -227,7 +217,7 @@ public class HumanBeingService {
             return humanBeingDao.deleteHeroesWithoutToothpicks();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error deleting heroes without toothpicks", e);
-            sessionContext.setRollbackOnly(); // Откатываем транзакцию при ошибке
+            sessionContext.setRollbackOnly(); 
             throw new RuntimeException("Failed to delete heroes without toothpicks: " + e.getMessage(), e);
         }
     }
@@ -239,7 +229,7 @@ public class HumanBeingService {
             return humanBeingDao.setAllMoodToSadness();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error setting all mood to sadness", e);
-            sessionContext.setRollbackOnly(); // Откатываем транзакцию при ошибке
+            sessionContext.setRollbackOnly(); 
             throw new RuntimeException("Failed to set all mood to sadness: " + e.getMessage(), e);
         }
     }
@@ -257,35 +247,27 @@ public class HumanBeingService {
         }
     }
 
-    /**
-     * Применяет дефолтное значение impactSpeed для MACHINE_GUN
-     */
     private void applyMachineGunDefault(HumanBeing humanBeing) {
         if (humanBeing.getWeaponType() == WeaponType.MACHINE_GUN && humanBeing.getImpactSpeed() == 0) {
-            // Если impactSpeed не заполнено (равно 0), устанавливаем дефолт 20
             humanBeing.setImpactSpeed(20.0f);
             LOGGER.log(Level.INFO, "Applied default impactSpeed=20 for MACHINE_GUN");
         }
     }
 
-    /**
-     * Проверяет уникальность координат
-     */
+
     private void validateUniqueCoordinates(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
         if (humanBeing.getCoordinates() == null || humanBeing.getCoordinates().getX() == null) {
-            return; // Координаты уже проверяются в других правилах
+            return; 
         }
         
         boolean shouldCheck = true;
         
         if (isUpdate && excludeId != null) {
-            // При UPDATE проверяем только если координаты изменились
             HumanBeing existing = humanBeingDao.findById(excludeId).orElse(null);
             if (existing != null && existing.getCoordinates() != null) {
                 Integer existingX = existing.getCoordinates().getX();
                 double existingY = existing.getCoordinates().getY();
                 
-                // Если координаты не изменились, не проверяем уникальность
                 if (existingX.equals(humanBeing.getCoordinates().getX()) && 
                     existingY == humanBeing.getCoordinates().getY()) {
                     shouldCheck = false;
@@ -309,9 +291,6 @@ public class HumanBeingService {
         }
     }
 
-    /**
-     * Проверяет правило для MACHINE_GUN: impactSpeed >= 20
-     */
     private void validateMachineGunRule(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
         if (humanBeing.getWeaponType() != WeaponType.MACHINE_GUN) {
             return;
@@ -320,10 +299,8 @@ public class HumanBeingService {
         boolean shouldCheck = true;
         
         if (isUpdate && excludeId != null) {
-            // При UPDATE проверяем только если weaponType или impactSpeed изменились
             HumanBeing existing = humanBeingDao.findById(excludeId).orElse(null);
             if (existing != null) {
-                // Если weaponType был MACHINE_GUN и остался, и impactSpeed не изменился - не проверяем
                 if (existing.getWeaponType() == WeaponType.MACHINE_GUN &&
                     existing.getImpactSpeed() == humanBeing.getImpactSpeed()) {
                     shouldCheck = false;
@@ -337,19 +314,12 @@ public class HumanBeingService {
         }
     }
 
-    /**
-     * Валидирует бизнес-правила
-     * @param humanBeing объект для валидации
-     * @param isUpdate true если это обновление, false если создание
-     * @param excludeId ID объекта, который нужно исключить из проверки (для UPDATE)
-     */
+
     private void validateBusinessRules(HumanBeing humanBeing, boolean isUpdate, Long excludeId) throws ValidationException {
         StringBuilder errors = new StringBuilder();
         
-        // Проверка уникальности координат
         validateUniqueCoordinates(humanBeing, isUpdate, excludeId, errors);
-        
-        // Проверка правила для MACHINE_GUN
+
         validateMachineGunRule(humanBeing, isUpdate, excludeId, errors);
         
         if (humanBeing.getName() != null) {
@@ -447,7 +417,6 @@ public class HumanBeingService {
         int failed = 0;
         
         try {
-            // Предварительная валидация всех объектов
             for (int i = 0; i < humanBeingDtos.size(); i++) {
                 HumanBeingDto dto = humanBeingDtos.get(i);
                 try {
@@ -458,32 +427,24 @@ public class HumanBeingService {
                 }
             }
             
-            // Если есть ошибки валидации, возвращаем ошибку БЕЗ импорта
-            // Откатываем транзакцию через SessionContext
             if (!errors.isEmpty()) {
                 sessionContext.setRollbackOnly();
                 return ImportResult.failure("Validation failed - no objects imported", humanBeingDtos.size(), 
                                           0, failed, errors);
             }
-            
-            // Импортируем все объекты в одной транзакции
-            // Если любой объект не удастся импортировать, откатываем все
+
             List<HumanBeing> entitiesToCreate = new ArrayList<>();
-            
-            // Подготавливаем все объекты для создания
+
             for (int i = 0; i < humanBeingDtos.size(); i++) {
                 HumanBeingDto dto = humanBeingDtos.get(i);
                 HumanBeing humanBeing = mapper.toEntity(dto);
-                
-                // Устанавливаем creationDate автоматически
+
                 if (humanBeing.getCreationDate() == null) {
                     humanBeing.setCreationDate(new java.util.Date());
                 }
-                
-                // Обработка MACHINE_GUN: устанавливаем impactSpeed = 20 если не заполнено
+
                 applyMachineGunDefault(humanBeing);
-                
-                // Сохраняем Car вручную перед созданием HumanBeing (каскад убран)
+
                 if (humanBeing.getCar() != null && humanBeing.getCar().getId() == null) {
                     Car savedCar = carDao.create(humanBeing.getCar());
                     humanBeing.setCar(savedCar);
@@ -491,8 +452,7 @@ public class HumanBeingService {
                 
                 entitiesToCreate.add(humanBeing);
             }
-            
-            // Проверка уникальности координат внутри импортируемых объектов
+
             for (int i = 0; i < entitiesToCreate.size(); i++) {
                 HumanBeing current = entitiesToCreate.get(i);
                 if (current.getCoordinates() != null && current.getCoordinates().getX() != null) {
@@ -511,8 +471,7 @@ public class HumanBeingService {
                         }
                     }
                 }
-                
-                // Проверяем уникальность с существующими в БД
+
                 if (current.getCoordinates() != null && current.getCoordinates().getX() != null) {
                     Optional<HumanBeing> existing = humanBeingDao.findByCoordinates(
                         current.getCoordinates().getX(),
@@ -528,8 +487,7 @@ public class HumanBeingService {
                     }
                 }
             }
-            
-            // Создаем все объекты
+
             for (HumanBeing entity : entitiesToCreate) {
                 humanBeingDao.create(entity);
                 successfullyImported++;
@@ -541,7 +499,7 @@ public class HumanBeingService {
             
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Import failed with exception - all changes rolled back", e);
-            sessionContext.setRollbackOnly(); // Явно устанавливаем rollback для гарантии отката транзакции
+            sessionContext.setRollbackOnly(); 
             return ImportResult.failure("Import failed - no objects imported: " + e.getMessage(), 
                                       humanBeingDtos.size(), 0, humanBeingDtos.size(), errors);
         }
@@ -550,7 +508,6 @@ public class HumanBeingService {
     private void validateImportData(HumanBeingDto dto, int rowNumber) throws ValidationException {
         StringBuilder errors = new StringBuilder();
         
-        // Проверяем обязательные поля
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             errors.append("Name is required; ");
         }
@@ -571,7 +528,7 @@ public class HumanBeingService {
             }
         }
         
-        // Проверяем Mood enum
+    
         if (dto.getMood() == null || dto.getMood().trim().isEmpty()) {
             errors.append("Mood is required; ");
         } else {
@@ -582,7 +539,6 @@ public class HumanBeingService {
             }
         }
         
-        // Проверяем WeaponType enum
         WeaponType weaponType = null;
         if (dto.getWeaponType() == null || dto.getWeaponType().trim().isEmpty()) {
             errors.append("Weapon type is required; ");
@@ -593,8 +549,7 @@ public class HumanBeingService {
                 errors.append("Invalid weapon type value; ");
             }
         }
-        
-        // Проверяем правило для MACHINE_GUN
+
         if (weaponType == WeaponType.MACHINE_GUN && dto.getImpactSpeed() < 20) {
             errors.append("MACHINE_GUN requires impactSpeed >= 20 (current: " + dto.getImpactSpeed() + "); ");
         }
@@ -606,8 +561,7 @@ public class HumanBeingService {
         if (dto.getMinutesOfWaiting() == null) {
             errors.append("Minutes of waiting is required; ");
         }
-        
-        // Проверяем ограничения длины
+
         if (dto.getName() != null && dto.getName().length() > 100) {
             errors.append("Name must be 100 characters or less; ");
         }

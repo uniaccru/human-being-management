@@ -27,7 +27,7 @@ export interface HumanBeing {
   id?: number;
   name: string;
   coordinates: Coordinates;
-  creationDate?: Date | string | number; // Can be Date, ISO string, or timestamp
+  creationDate?: Date | string | number; 
   realHero: boolean;
   hasToothpick?: boolean | null;
   car: Car;
