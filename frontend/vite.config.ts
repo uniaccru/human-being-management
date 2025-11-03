@@ -16,7 +16,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true
+    sourcemap: false // Disable sourcemaps in production for smaller bundle size
   },
   base: '/human-being-manager/'
 });
