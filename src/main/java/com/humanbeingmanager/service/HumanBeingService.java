@@ -52,64 +52,88 @@ public class HumanBeingService {
     public HumanBeing createHumanBeing(HumanBeing humanBeing) throws ValidationException {
         LOGGER.log(Level.INFO, "Creating new HumanBeing: {0}", humanBeing.getName());
         
-        // Устанавливаем creationDate автоматически при создании
-        if (humanBeing.getCreationDate() == null) {
-            humanBeing.setCreationDate(new java.util.Date());
-        }
-        
-        // Обработка MACHINE_GUN: устанавливаем impactSpeed = 20 если не заполнено
-        applyMachineGunDefault(humanBeing);
-        
-        validateHumanBeing(humanBeing);
-        validateBusinessRules(humanBeing, false, null);
-        
-        if (humanBeing.getCar() != null && humanBeing.getCar().getId() == null) {
-            Car savedCar = carDao.create(humanBeing.getCar());
-            humanBeing.setCar(savedCar);
-        }
+        try {
+            // Устанавливаем creationDate автоматически при создании
+            if (humanBeing.getCreationDate() == null) {
+                humanBeing.setCreationDate(new java.util.Date());
+            }
+            
+            // Обработка MACHINE_GUN: устанавливаем impactSpeed = 20 если не заполнено
+            applyMachineGunDefault(humanBeing);
+            
+            validateHumanBeing(humanBeing);
+            validateBusinessRules(humanBeing, false, null);
+            
+            if (humanBeing.getCar() != null && humanBeing.getCar().getId() == null) {
+                Car savedCar = carDao.create(humanBeing.getCar());
+                humanBeing.setCar(savedCar);
+            }
 
-        HumanBeing created = humanBeingDao.create(humanBeing);
-        
-        LOGGER.log(Level.INFO, "Successfully created HumanBeing with ID: {0}", created.getId());
-        
-        return created;
+            HumanBeing created = humanBeingDao.create(humanBeing);
+            
+            LOGGER.log(Level.INFO, "Successfully created HumanBeing with ID: {0}", created.getId());
+            
+            return created;
+        } catch (ValidationException e) {
+            // Явно откатываем транзакцию при ошибке валидации
+            sessionContext.setRollbackOnly();
+            throw e;
+        } catch (Exception e) {
+            // Откатываем транзакцию при любой другой ошибке
+            sessionContext.setRollbackOnly();
+            throw new RuntimeException("Failed to create HumanBeing: " + e.getMessage(), e);
+        }
     }
 
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public HumanBeing updateHumanBeing(HumanBeing humanBeing) throws ValidationException, EntityNotFoundException {
         LOGGER.log(Level.INFO, "Updating HumanBeing with ID: {0}", humanBeing.getId());
         
-        if (humanBeing.getId() == null || !humanBeingDao.existsById(humanBeing.getId())) {
-            throw new EntityNotFoundException("HumanBeing with ID " + humanBeing.getId() + " not found");
-        }
-        
-        // Сохраняем существующий creationDate
-        HumanBeing existing = humanBeingDao.findById(humanBeing.getId()).orElseThrow(
-            () -> new EntityNotFoundException("HumanBeing with ID " + humanBeing.getId() + " not found")
-        );
-        if (humanBeing.getCreationDate() == null) {
-            humanBeing.setCreationDate(existing.getCreationDate());
-        }
-        
-        // Обработка MACHINE_GUN: устанавливаем impactSpeed = 20 если не заполнено
-        applyMachineGunDefault(humanBeing);
-        
-        validateHumanBeing(humanBeing);
-        validateBusinessRules(humanBeing, true, humanBeing.getId());
-
-        if (humanBeing.getCar() != null) {
-            if (humanBeing.getCar().getId() == null) {
-                Car savedCar = carDao.create(humanBeing.getCar());
-                humanBeing.setCar(savedCar);
-            } else {
-                carDao.update(humanBeing.getCar());
+        try {
+            if (humanBeing.getId() == null || !humanBeingDao.existsById(humanBeing.getId())) {
+                sessionContext.setRollbackOnly();
+                throw new EntityNotFoundException("HumanBeing with ID " + humanBeing.getId() + " not found");
             }
+            
+            // Сохраняем существующий creationDate
+            HumanBeing existing = humanBeingDao.findById(humanBeing.getId()).orElseThrow(
+                () -> {
+                    sessionContext.setRollbackOnly();
+                    return new EntityNotFoundException("HumanBeing with ID " + humanBeing.getId() + " not found");
+                }
+            );
+            if (humanBeing.getCreationDate() == null) {
+                humanBeing.setCreationDate(existing.getCreationDate());
+            }
+            
+            // Обработка MACHINE_GUN: устанавливаем impactSpeed = 20 если не заполнено
+            applyMachineGunDefault(humanBeing);
+            
+            validateHumanBeing(humanBeing);
+            validateBusinessRules(humanBeing, true, humanBeing.getId());
+
+            if (humanBeing.getCar() != null) {
+                if (humanBeing.getCar().getId() == null) {
+                    Car savedCar = carDao.create(humanBeing.getCar());
+                    humanBeing.setCar(savedCar);
+                } else {
+                    carDao.update(humanBeing.getCar());
+                }
+            }
+            
+            HumanBeing updated = humanBeingDao.update(humanBeing);
+            LOGGER.log(Level.INFO, "Successfully updated HumanBeing with ID: {0}", updated.getId());
+            
+            return updated;
+        } catch (ValidationException | EntityNotFoundException e) {
+            // Явно откатываем транзакцию при ошибке валидации или если объект не найден
+            sessionContext.setRollbackOnly();
+            throw e;
+        } catch (Exception e) {
+            // Откатываем транзакцию при любой другой ошибке
+            sessionContext.setRollbackOnly();
+            throw new RuntimeException("Failed to update HumanBeing: " + e.getMessage(), e);
         }
-        
-        HumanBeing updated = humanBeingDao.update(humanBeing);
-        LOGGER.log(Level.INFO, "Successfully updated HumanBeing with ID: {0}", updated.getId());
-        
-        return updated;
     }
 
     public Optional<HumanBeing> getHumanBeingById(Long id) {
@@ -137,18 +161,29 @@ public class HumanBeingService {
     public boolean deleteHumanBeing(Long id) throws EntityNotFoundException {
         LOGGER.log(Level.INFO, "Deleting HumanBeing with ID: {0}", id);
         
-        Optional<HumanBeing> humanBeing = humanBeingDao.findById(id);
-        if (humanBeing.isEmpty()) {
-            throw new EntityNotFoundException("HumanBeing with ID " + id + " not found");
+        try {
+            Optional<HumanBeing> humanBeing = humanBeingDao.findById(id);
+            if (humanBeing.isEmpty()) {
+                sessionContext.setRollbackOnly();
+                throw new EntityNotFoundException("HumanBeing with ID " + id + " not found");
+            }
+            
+            boolean deleted = humanBeingDao.deleteById(id);
+            
+            if (deleted) {
+                LOGGER.log(Level.INFO, "Successfully deleted HumanBeing with ID: {0}", id);
+            }
+            
+            return deleted;
+        } catch (EntityNotFoundException e) {
+            // Явно откатываем транзакцию если объект не найден
+            sessionContext.setRollbackOnly();
+            throw e;
+        } catch (Exception e) {
+            // Откатываем транзакцию при любой другой ошибке
+            sessionContext.setRollbackOnly();
+            throw new RuntimeException("Failed to delete HumanBeing: " + e.getMessage(), e);
         }
-        
-        boolean deleted = humanBeingDao.deleteById(id);
-        
-        if (deleted) {
-            LOGGER.log(Level.INFO, "Successfully deleted HumanBeing with ID: {0}", id);
-        }
-        
-        return deleted;
     }
 
     public Long getHumanBeingCount() {
@@ -188,13 +223,25 @@ public class HumanBeingService {
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public int deleteHeroesWithoutToothpicks() {
         LOGGER.log(Level.INFO, "Deleting all heroes without toothpicks");
-        return humanBeingDao.deleteHeroesWithoutToothpicks();
+        try {
+            return humanBeingDao.deleteHeroesWithoutToothpicks();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error deleting heroes without toothpicks", e);
+            sessionContext.setRollbackOnly(); // Откатываем транзакцию при ошибке
+            throw new RuntimeException("Failed to delete heroes without toothpicks: " + e.getMessage(), e);
+        }
     }
 
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public int setAllMoodToSadness() {
         LOGGER.log(Level.INFO, "Setting all heroes mood to SADNESS");
-        return humanBeingDao.setAllMoodToSadness();
+        try {
+            return humanBeingDao.setAllMoodToSadness();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error setting all mood to sadness", e);
+            sessionContext.setRollbackOnly(); // Откатываем транзакцию при ошибке
+            throw new RuntimeException("Failed to set all mood to sadness: " + e.getMessage(), e);
+        }
     }
 
 
@@ -494,6 +541,7 @@ public class HumanBeingService {
             
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Import failed with exception - all changes rolled back", e);
+            sessionContext.setRollbackOnly(); // Явно устанавливаем rollback для гарантии отката транзакции
             return ImportResult.failure("Import failed - no objects imported: " + e.getMessage(), 
                                       humanBeingDtos.size(), 0, humanBeingDtos.size(), errors);
         }
