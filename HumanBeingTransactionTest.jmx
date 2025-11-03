@@ -76,40 +76,40 @@
       <hashTree/>
       
 
-      <!-- Setup Thread Group: Create initial test object -->
-      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup" testname="Setup: Create Test Object" enabled="true">
+      <!-- Test: Concurrent UPDATE - Same Object -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Test: Concurrent UPDATE - Same Object" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControllerGui" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">1</stringProp>
+          <stringProp name="LoopController.loops">3</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">1</stringProp>
+        <stringProp name="ThreadGroup.num_threads">20</stringProp>
         <stringProp name="ThreadGroup.ramp_time">1</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
         <stringProp name="ThreadGroup.duration"></stringProp>
         <stringProp name="ThreadGroup.delay"></stringProp>
-      </SetupThreadGroup>
+      </ThreadGroup>
       <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Create Initial Test Object" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Create Object for Update Test" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
             <collectionProp name="Arguments.arguments">
               <elementProp name="" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">false</boolProp>
                 <stringProp name="Argument.value">{
-  "name": "Test Object for Concurrency",
+  "name": "Update Test Object",
   "coordinates": {
-    "x": 100,
-    "y": 200.5
+    "x": ${__Random(100,900)},
+    "y": ${__Random(100,900)}
   },
   "realHero": true,
   "hasToothpick": true,
   "car": {
-    "name": "TestCar",
+    "name": "UpdateTestCar",
     "cool": true
   },
   "mood": "CALM",
   "impactSpeed": 50.5,
-  "soundtrackName": "Test Soundtrack",
+  "soundtrackName": "Update Test Soundtrack",
   "minutesOfWaiting": 30,
   "weaponType": "AXE"
 }</stringProp>
@@ -132,129 +132,32 @@
           <stringProp name="HTTPSampler.response_timeout"></stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Extract Created Object ID" enabled="true">
+          <RegexExtractor guiclass="RegexExtractorGui" testclass="RegexExtractor" testname="Extract Update Test Object ID" enabled="true">
             <stringProp name="RegexExtractor.useHeaders">false</stringProp>
-            <stringProp name="RegexExtractor.refname">test_object_id</stringProp>
+            <stringProp name="RegexExtractor.refname">update_test_id</stringProp>
             <stringProp name="RegexExtractor.regex">"id"\s*:\s*(\d+)</stringProp>
             <stringProp name="RegexExtractor.template">$1$</stringProp>
             <stringProp name="RegexExtractor.default"></stringProp>
             <stringProp name="RegexExtractor.match_number">1</stringProp>
-            <stringProp name="RegexExtractor.scope">all</stringProp>
           </RegexExtractor>
           <hashTree/>
-          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Save as Property" enabled="true">
+          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Save update_test_id as Property" enabled="true">
             <stringProp name="cacheKey">true</stringProp>
             <stringProp name="filename"></stringProp>
             <stringProp name="parameters"></stringProp>
-            <stringProp name="script">if (vars.get("test_object_id") != null &amp;&amp; !vars.get("test_object_id").isEmpty()) {
-    props.put("test_object_id", vars.get("test_object_id"));
+            <stringProp name="script">if (vars.get("update_test_id") != null &amp;&amp; !vars.get("update_test_id").isEmpty()) {
+    props.put("update_test_id", vars.get("update_test_id"));
 }</stringProp>
             <stringProp name="scriptLanguage">groovy</stringProp>
           </JSR223PostProcessor>
           <hashTree/>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response Code = 201" enabled="true">
-            <collectionProp name="Assertion.test_strings">
-              <stringProp name="0">201</stringProp>
-            </collectionProp>
-            <stringProp name="Assertion.custom_message">Setup failed: Object was not created</stringProp>
-            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
-            <boolProp name="Assertion.assume_success">false</boolProp>
-            <intProp name="Assertion.test_type">1</intProp>
-          </ResponseAssertion>
-          <hashTree/>
         </hashTree>
-      </hashTree>
-
-      <!-- Thread Group 1: Concurrent Create with Same Coordinates (Uniqueness Test) -->
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Test 1: Concurrent Create - Uniqueness Check" enabled="true">
-        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
-        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControllerGui" testclass="LoopController" testname="Loop Controller" enabled="true">
-          <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">1</stringProp>
-        </elementProp>
-        <stringProp name="ThreadGroup.num_threads">5</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
-        <boolProp name="ThreadGroup.scheduler">false</boolProp>
-        <stringProp name="ThreadGroup.duration"></stringProp>
-        <stringProp name="ThreadGroup.delay"></stringProp>
-      </ThreadGroup>
-      <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Create with Duplicate Coordinates" enabled="true">
-          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
-            <collectionProp name="Arguments.arguments">
-              <elementProp name="" elementType="HTTPArgument">
-                <boolProp name="HTTPArgument.always_encode">false</boolProp>
-                <stringProp name="Argument.value">{
-  "name": "Concurrent User ${__threadNum}",
-  "coordinates": {
-    "x": 500,
-    "y": 600.5
-  },
-  "realHero": true,
-  "hasToothpick": true,
-  "car": {
-    "name": "Car${__threadNum}",
-    "cool": true
-  },
-  "mood": "CALM",
-  "impactSpeed": ${__Random(1,100)},
-  "soundtrackName": "Soundtrack${__threadNum}",
-  "minutesOfWaiting": ${__Random(1,100)},
-  "weaponType": "AXE"
-}</stringProp>
-                <stringProp name="Argument.metadata">=</stringProp>
-              </elementProp>
-            </collectionProp>
-          </elementProp>
-          <stringProp name="HTTPSampler.domain">localhost</stringProp>
-          <stringProp name="HTTPSampler.port">24180</stringProp>
-          <stringProp name="HTTPSampler.protocol">http</stringProp>
-          <stringProp name="HTTPSampler.contentEncoding"></stringProp>
-          <stringProp name="HTTPSampler.path">/human-being-manager/api/humanbeings</stringProp>
-          <stringProp name="HTTPSampler.method">POST</stringProp>
-          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
-          <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
-          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
-          <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
-          <stringProp name="HTTPSampler.connect_timeout"></stringProp>
-          <stringProp name="HTTPSampler.response_timeout"></stringProp>
-        </HTTPSamplerProxy>
-        <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert Uniqueness - Only One Success" enabled="true">
-            <collectionProp name="Assertion.test_strings">
-              <stringProp name="0">201</stringProp>
-              <stringProp name="1">400</stringProp>
-            </collectionProp>
-            <stringProp name="Assertion.custom_message">Uniqueness violation should return 400</stringProp>
-            <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
-            <boolProp name="Assertion.assume_success">false</boolProp>
-            <intProp name="Assertion.test_type">16</intProp>
-          </ResponseAssertion>
-          <hashTree/>
-        </hashTree>
-      </hashTree>
-
-      <!-- Thread Group 2: Concurrent Update of Same Object -->
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Test 2: Concurrent Update - Same Object" enabled="true">
-        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
-        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControllerGui" testclass="LoopController" testname="Loop Controller" enabled="true">
-          <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">3</stringProp>
-        </elementProp>
-        <stringProp name="ThreadGroup.num_threads">5</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
-        <boolProp name="ThreadGroup.scheduler">false</boolProp>
-        <stringProp name="ThreadGroup.duration"></stringProp>
-        <stringProp name="ThreadGroup.delay"></stringProp>
-      </ThreadGroup>
-      <hashTree>
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Get Object Before Update" enabled="true">
           <stringProp name="HTTPSampler.domain">localhost</stringProp>
           <stringProp name="HTTPSampler.port">24180</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.contentEncoding"></stringProp>
-          <stringProp name="HTTPSampler.path">/human-being-manager/api/humanbeings/${__property(test_object_id,${test_object_id},)}</stringProp>
+          <stringProp name="HTTPSampler.path">/human-being-manager/api/humanbeings/${__property(update_test_id,${update_test_id},)}</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
@@ -275,17 +178,17 @@
           </RegexExtractor>
           <hashTree/>
         </hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Update Same Object Concurrently" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Concurrent UPDATE - Same Object" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
             <collectionProp name="Arguments.arguments">
               <elementProp name="" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">false</boolProp>
                 <stringProp name="Argument.value">{
-  "id": ${test_object_id},
-  "name": "Updated by User ${__threadNum} - Loop ${__jm__Test 2: Concurrent Update - Same Object__idx}",
+  "id": ${__property(update_test_id,${update_test_id},)},
+  "name": "Updated by User ${__threadNum} - Loop ${__jm__Test: Concurrent UPDATE - Same Object__idx}",
   "coordinates": {
-    "x": 100,
-    "y": 200.5
+    "x": ${__Random(100,900)},
+    "y": ${__Random(100,900)}
   },
   "realHero": true,
   "hasToothpick": true,
@@ -307,7 +210,7 @@
           <stringProp name="HTTPSampler.port">24180</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.contentEncoding"></stringProp>
-          <stringProp name="HTTPSampler.path">/human-being-manager/api/humanbeings/${__property(test_object_id,${test_object_id},)}</stringProp>
+          <stringProp name="HTTPSampler.path">/human-being-manager/api/humanbeings/${__property(update_test_id,${update_test_id},)}</stringProp>
           <stringProp name="HTTPSampler.method">PUT</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
@@ -318,7 +221,7 @@
           <stringProp name="HTTPSampler.response_timeout"></stringProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response Code = 200" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Update Response Valid" enabled="true">
             <collectionProp name="Assertion.test_strings">
               <stringProp name="0">200</stringProp>
             </collectionProp>
@@ -336,14 +239,14 @@
         <hashTree/>
       </hashTree>
 
-      <!-- Thread Group 3: Concurrent Delete of Same Object -->
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Test 3: Concurrent Delete - Same Object" enabled="true">
+      <!-- Test: Concurrent DELETE - Same Object -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Test: Concurrent DELETE - Same Object" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControllerGui" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
           <stringProp name="LoopController.loops">1</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">5</stringProp>
+        <stringProp name="ThreadGroup.num_threads">20</stringProp>
         <stringProp name="ThreadGroup.ramp_time">1</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
         <stringProp name="ThreadGroup.duration"></stringProp>
@@ -442,14 +345,14 @@
         </hashTree>
       </hashTree>
 
-      <!-- Thread Group 4: Import Operations -->
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Test 4: Concurrent Import" enabled="true">
+      <!-- Test: Concurrent IMPORT Operations -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Test: Concurrent IMPORT Operations" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControllerGui" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
           <stringProp name="LoopController.loops">2</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">3</stringProp>
+        <stringProp name="ThreadGroup.num_threads">20</stringProp>
         <stringProp name="ThreadGroup.ramp_time">${RAMP_UP}</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
         <stringProp name="ThreadGroup.duration"></stringProp>
@@ -532,14 +435,14 @@
         </hashTree>
       </hashTree>
 
-      <!-- Thread Group 5: General CRUD Operations -->
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Test 5: General CRUD Operations" enabled="true">
+      <!-- Test: Full CRUD Cycle (CREATE-READ-UPDATE-DELETE) -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Test: Full CRUD Cycle (CREATE-READ-UPDATE-DELETE)" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControllerGui" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
           <stringProp name="LoopController.loops">2</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">3</stringProp>
+        <stringProp name="ThreadGroup.num_threads">20</stringProp>
         <stringProp name="ThreadGroup.ramp_time">${RAMP_UP}</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
         <stringProp name="ThreadGroup.duration"></stringProp>
