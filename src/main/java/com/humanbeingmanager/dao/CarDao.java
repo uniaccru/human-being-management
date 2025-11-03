@@ -1,40 +1,20 @@
 package com.humanbeingmanager.dao;
 
 import com.humanbeingmanager.entity.Car;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import jakarta.ejb.Stateless;
 import jakarta.persistence.*;
 import java.util.List;
 import java.util.Optional;
 
-@ApplicationScoped
+@Stateless
 public class CarDao {
 
-    @Inject
+    @PersistenceContext(unitName = "HumanBeingPU", type = PersistenceContextType.TRANSACTION)
     private EntityManager entityManager;
 
     public Car create(Car car) {
-        EntityTransaction transaction = entityManager.getTransaction();
-        boolean transactionStartedHere = false;
-        try {
-            if (!transaction.isActive()) {
-                transaction.begin();
-                transactionStartedHere = true;
-            }
-            entityManager.persist(car);
-            entityManager.flush();
-            // Коммитим только если мы начали транзакцию здесь
-            if (transactionStartedHere && transaction.isActive()) {
-                transaction.commit();
-            }
-            return car;
-        } catch (Exception e) {
-            // Откатываем только если мы начали транзакцию здесь
-            if (transactionStartedHere && transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw e;
-        }
+        entityManager.persist(car);
+        return car;
     }
 
     public Optional<Car> findById(Long id) {
@@ -48,30 +28,14 @@ public class CarDao {
     }
 
     public Car update(Car car) {
-        EntityTransaction transaction = entityManager.getTransaction();
-        try {
-            if (!transaction.isActive()) {
-                transaction.begin();
-            }
-            Car merged = entityManager.merge(car);
-            entityManager.flush();
-            if (transaction.isActive()) {
-                transaction.commit();
-            }
-            return merged;
-        } catch (Exception e) {
-            if (transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw e;
-        }
+        Car merged = entityManager.merge(car);
+        return merged;
     }
 
     public boolean deleteById(Long id) {
         Optional<Car> car = findById(id);
         if (car.isPresent()) {
             entityManager.remove(car.get());
-            entityManager.flush();
             return true;
         }
         return false;
@@ -84,7 +48,6 @@ public class CarDao {
             Car managedEntity = entityManager.merge(car);
             entityManager.remove(managedEntity);
         }
-        entityManager.flush();
     }
 
     public boolean existsById(Long id) {

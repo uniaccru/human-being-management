@@ -1,17 +1,20 @@
 package com.humanbeingmanager.rest;
 
-import com.humanbeingmanager.config.CdiHk2Binder;
 import jakarta.ws.rs.ApplicationPath;
-import org.glassfish.jersey.server.ResourceConfig;
+import jakarta.ws.rs.core.Application;
+import java.util.HashSet;
+import java.util.Set;
 
 @ApplicationPath("/api")
-public class RestApplication extends ResourceConfig {
+public class RestApplication extends Application {
     
-    public RestApplication() {
-        register(HumanBeingResource.class);
-        register(SpecialOperationsResource.class);
-        register(ImportResource.class);
-        register(CorsFilter.class);
-        register(new CdiHk2Binder());
+    @Override
+    public Set<Class<?>> getClasses() {
+        Set<Class<?>> classes = new HashSet<>();
+        classes.add(HumanBeingResource.class);
+        classes.add(SpecialOperationsResource.class);
+        classes.add(ImportResource.class);
+        classes.add(CorsFilter.class);
+        return classes;
     }
 }

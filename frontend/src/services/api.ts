@@ -1,8 +1,22 @@
 import axios, { AxiosResponse } from 'axios';
 import { HumanBeing, CreateHumanBeingRequest, Car } from '../types';
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 
-  (window.location.hostname === 'localhost' ? 'http://localhost:8080/api' : '/api');
+// Для WildFly: если приложение деплоится на /human-being-manager/, используем относительный путь
+const getApiBaseUrl = () => {
+  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  if (envUrl) return envUrl;
+  
+  // Если запускаем на localhost (dev режим)
+  if (window.location.hostname === 'localhost' && window.location.port !== '24180') {
+    return 'http://localhost:8080/api';
+  }
+  
+  // Для production на WildFly используем относительный путь
+  // Если base path /human-being-manager/, то API будет /human-being-manager/api
+  return '/human-being-manager/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

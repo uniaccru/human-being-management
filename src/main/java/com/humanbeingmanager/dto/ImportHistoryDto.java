@@ -1,5 +1,6 @@
 package com.humanbeingmanager.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.Date;
 
 public class ImportHistoryDto {
@@ -10,6 +11,8 @@ public class ImportHistoryDto {
     private Integer totalProcessed;
     private Integer failedCount;
     private String errorMessage;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private Date createdAt;
 
     public ImportHistoryDto() {}

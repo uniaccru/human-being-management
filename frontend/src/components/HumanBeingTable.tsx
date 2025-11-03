@@ -107,11 +107,35 @@ const HumanBeingTable: React.FC<HumanBeingTableProps> = ({
     loadHumanBeings(0, newSize);
   };
 
-  const formatDate = (date: Date | string | undefined) => {
+  const formatDate = (date: Date | string | number | undefined) => {
     if (!date) return 'N/A';
     try {
-      return new Date(date).toLocaleDateString();
-    } catch {
+      // Handle different date formats: number (timestamp), string, or Date object
+      let dateObj: Date;
+      if (typeof date === 'number') {
+        // If it's a number, treat it as timestamp (milliseconds)
+        dateObj = new Date(date);
+      } else if (typeof date === 'string') {
+        // If it's a string, parse it
+        dateObj = new Date(date);
+      } else {
+        // If it's already a Date object
+        dateObj = date;
+      }
+      
+      // Check if date is valid
+      if (isNaN(dateObj.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      return dateObj.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
       return 'Invalid Date';
     }
   };

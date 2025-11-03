@@ -6,6 +6,7 @@ import com.humanbeingmanager.service.ImportResult;
 import com.humanbeingmanager.dao.ImportHistoryDao;
 import com.humanbeingmanager.entity.ImportHistory;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.ejb.EJB;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -23,10 +24,10 @@ public class ImportResource {
 
     private static final Logger LOGGER = Logger.getLogger(ImportResource.class.getName());
 
-    @Inject
+    @EJB
     private HumanBeingService humanBeingService;
 
-    @Inject
+    @EJB
     private ImportHistoryDao importHistoryDao;
 
     @POST

@@ -1,5 +1,6 @@
 package com.humanbeingmanager.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.Date;
@@ -17,6 +18,7 @@ public class HumanBeingDto {
     @NotNull(message = "Coordinates cannot be null")
     private CoordinatesDto coordinates;
     
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private Date creationDate;
     
     private boolean realHero;

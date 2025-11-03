@@ -1,40 +1,20 @@
 package com.humanbeingmanager.dao;
 
 import com.humanbeingmanager.entity.HumanBeing;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import jakarta.ejb.Stateless;
 import jakarta.persistence.*;
 import java.util.List;
 import java.util.Optional;
 
-@ApplicationScoped
+@Stateless
 public class HumanBeingDao {
 
-    @Inject
+    @PersistenceContext(unitName = "HumanBeingPU", type = PersistenceContextType.TRANSACTION)
     private EntityManager entityManager;
 
     public HumanBeing create(HumanBeing humanBeing) {
-        EntityTransaction transaction = entityManager.getTransaction();
-        boolean transactionStartedHere = false;
-        try {
-            if (!transaction.isActive()) {
-                transaction.begin();
-                transactionStartedHere = true;
-            }
-            entityManager.persist(humanBeing);
-            entityManager.flush();
-            // Коммитим только если мы начали транзакцию здесь
-            if (transactionStartedHere && transaction.isActive()) {
-                transaction.commit();
-            }
-            return humanBeing;
-        } catch (Exception e) {
-            // Откатываем только если мы начали транзакцию здесь
-            if (transactionStartedHere && transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw e;
-        }
+        entityManager.persist(humanBeing);
+        return humanBeing;
     }
 
     public Optional<HumanBeing> findById(Long id) {
@@ -86,73 +66,25 @@ public class HumanBeingDao {
     }
 
     public HumanBeing update(HumanBeing humanBeing) {
-        EntityTransaction transaction = entityManager.getTransaction();
-        try {
-            if (!transaction.isActive()) {
-                transaction.begin();
-            }
-            HumanBeing merged = entityManager.merge(humanBeing);
-            entityManager.flush();
-            if (transaction.isActive()) {
-                transaction.commit();
-            }
-            return merged;
-        } catch (Exception e) {
-            if (transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw e;
-        }
+        HumanBeing merged = entityManager.merge(humanBeing);
+        return merged;
     }
 
     public boolean deleteById(Long id) {
-        EntityTransaction transaction = entityManager.getTransaction();
-        try {
-            if (!transaction.isActive()) {
-                transaction.begin();
-            }
-            Optional<HumanBeing> humanBeing = findById(id);
-            if (humanBeing.isPresent()) {
-                entityManager.remove(humanBeing.get());
-                entityManager.flush();
-                if (transaction.isActive()) {
-                    transaction.commit();
-                }
-                return true;
-            }
-            if (transaction.isActive()) {
-                transaction.commit();
-            }
-            return false;
-        } catch (Exception e) {
-            if (transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw e;
+        Optional<HumanBeing> humanBeing = findById(id);
+        if (humanBeing.isPresent()) {
+            entityManager.remove(humanBeing.get());
+            return true;
         }
+        return false;
     }
 
     public void delete(HumanBeing humanBeing) {
-        EntityTransaction transaction = entityManager.getTransaction();
-        try {
-            if (!transaction.isActive()) {
-                transaction.begin();
-            }
-            if (entityManager.contains(humanBeing)) {
-                entityManager.remove(humanBeing);
-            } else {
-                HumanBeing managedEntity = entityManager.merge(humanBeing);
-                entityManager.remove(managedEntity);
-            }
-            entityManager.flush();
-            if (transaction.isActive()) {
-                transaction.commit();
-            }
-        } catch (Exception e) {
-            if (transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw e;
+        if (entityManager.contains(humanBeing)) {
+            entityManager.remove(humanBeing);
+        } else {
+            HumanBeing managedEntity = entityManager.merge(humanBeing);
+            entityManager.remove(managedEntity);
         }
     }
 
@@ -244,61 +176,30 @@ public class HumanBeingDao {
     }
 
     public int deleteHeroesWithoutToothpicks() {
-        EntityTransaction transaction = entityManager.getTransaction();
-        try {
-            if (!transaction.isActive()) {
-                transaction.begin();
-            }
-            TypedQuery<HumanBeing> query = entityManager.createQuery(
-                "SELECT h FROM HumanBeing h WHERE h.realHero = true AND (h.hasToothpick = false OR h.hasToothpick IS NULL)", 
-                HumanBeing.class);
-            List<HumanBeing> toDelete = query.getResultList();
-            
-            for (HumanBeing humanBeing : toDelete) {
-                entityManager.remove(humanBeing);
-            }
-            
-            entityManager.flush();
-            if (transaction.isActive()) {
-                transaction.commit();
-            }
-            return toDelete.size();
-        } catch (Exception e) {
-            if (transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw e;
+        TypedQuery<HumanBeing> query = entityManager.createQuery(
+            "SELECT h FROM HumanBeing h WHERE h.realHero = true AND (h.hasToothpick = false OR h.hasToothpick IS NULL)", 
+            HumanBeing.class);
+        List<HumanBeing> toDelete = query.getResultList();
+        
+        for (HumanBeing humanBeing : toDelete) {
+            entityManager.remove(humanBeing);
         }
+        
+        return toDelete.size();
     }
 
     public int setAllMoodToSadness() {
-        EntityTransaction transaction = entityManager.getTransaction();
-        try {
-            if (!transaction.isActive()) {
-                transaction.begin();
-            }
+        TypedQuery<HumanBeing> selectQuery = entityManager.createQuery(
+            "SELECT h FROM HumanBeing h WHERE h.realHero = true", HumanBeing.class);
+        List<HumanBeing> heroes = selectQuery.getResultList();
 
-            TypedQuery<HumanBeing> selectQuery = entityManager.createQuery(
-                "SELECT h FROM HumanBeing h WHERE h.realHero = true", HumanBeing.class);
-            List<HumanBeing> heroes = selectQuery.getResultList();
-
-            int updatedCount = 0;
-            for (HumanBeing hero : heroes) {
-                hero.setMood(com.humanbeingmanager.entity.Mood.SADNESS);
-                entityManager.merge(hero);
-                updatedCount++;
-            }
-            
-            entityManager.flush();
-            if (transaction.isActive()) {
-                transaction.commit();
-            }
-            return updatedCount;
-        } catch (Exception e) {
-            if (transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw e;
+        int updatedCount = 0;
+        for (HumanBeing hero : heroes) {
+            hero.setMood(com.humanbeingmanager.entity.Mood.SADNESS);
+            entityManager.merge(hero);
+            updatedCount++;
         }
+        
+        return updatedCount;
     }
 }

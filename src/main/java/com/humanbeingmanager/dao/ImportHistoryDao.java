@@ -1,36 +1,20 @@
 package com.humanbeingmanager.dao;
 
 import com.humanbeingmanager.entity.ImportHistory;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import jakarta.ejb.Stateless;
 import jakarta.persistence.*;
 import java.util.List;
 import java.util.Optional;
 
-@ApplicationScoped
+@Stateless
 public class ImportHistoryDao {
 
-    @Inject
+    @PersistenceContext(unitName = "HumanBeingPU", type = PersistenceContextType.TRANSACTION)
     private EntityManager entityManager;
 
     public ImportHistory create(ImportHistory history) {
-        EntityTransaction transaction = entityManager.getTransaction();
-        try {
-            if (!transaction.isActive()) {
-                transaction.begin();
-            }
-            entityManager.persist(history);
-            entityManager.flush();
-            if (transaction.isActive()) {
-                transaction.commit();
-            }
-            return history;
-        } catch (Exception e) {
-            if (transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw e;
-        }
+        entityManager.persist(history);
+        return history;
     }
 
     public List<ImportHistory> findAll() {

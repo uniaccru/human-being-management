@@ -45,6 +45,39 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
   const [history, setHistory] = useState<ImportHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  const formatDate = (date: Date | string | number | undefined) => {
+    if (!date) return 'N/A';
+    try {
+      // Handle different date formats: number (timestamp), string, or Date object
+      let dateObj: Date;
+      if (typeof date === 'number') {
+        // If it's a number, treat it as timestamp (milliseconds)
+        dateObj = new Date(date);
+      } else if (typeof date === 'string') {
+        // If it's a string, parse it
+        dateObj = new Date(date);
+      } else {
+        // If it's already a Date object
+        dateObj = date;
+      }
+      
+      // Check if date is valid
+      if (isNaN(dateObj.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      return dateObj.toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return 'Invalid Date';
+    }
+  };
+
   useEffect(() => {
     loadHistory(setHistory, setHistoryLoading);
   }, []);
@@ -245,7 +278,7 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
                       <TableCell align="right">{item.totalProcessed}</TableCell>
                       <TableCell align="right">{item.failedCount}</TableCell>
                       <TableCell>
-                        {new Date(item.createdAt).toLocaleString('ru-RU')}
+                        {formatDate(item.createdAt)}
                       </TableCell>
                     </TableRow>
                   ))

@@ -6,6 +6,7 @@ import com.humanbeingmanager.entity.Car;
 import com.humanbeingmanager.mapper.EntityDtoMapper;
 import com.humanbeingmanager.service.HumanBeingService;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.ejb.EJB;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -24,7 +25,7 @@ public class HumanBeingResource {
 
     private static final Logger LOGGER = Logger.getLogger(HumanBeingResource.class.getName());
 
-    @Inject
+    @EJB
     private HumanBeingService humanBeingService;
 
     @Inject

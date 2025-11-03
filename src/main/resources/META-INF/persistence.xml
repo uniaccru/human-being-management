@@ -5,7 +5,8 @@
              https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
              version="3.0">
 
-    <persistence-unit name="HumanBeingPU" transaction-type="RESOURCE_LOCAL">
+    <persistence-unit name="HumanBeingPU" transaction-type="JTA">
+        <jta-data-source>java:/PostgresDS</jta-data-source>
         <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
         
         <class>com.humanbeingmanager.entity.HumanBeing</class>
@@ -16,21 +17,13 @@
         <class>com.humanbeingmanager.entity.ImportHistory</class>
         
         <properties>
-            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
-            <property name="jakarta.persistence.jdbc.url" value="${DATABASE_URL}"/>
-            <property name="jakarta.persistence.jdbc.user" value="${PGUSER}"/>
-            <property name="jakarta.persistence.jdbc.password" value="${PGPASSWORD}"/>
-            
             <property name="eclipselink.ddl-generation" value="create-or-extend-tables"/>
             <property name="eclipselink.ddl-generation.output-mode" value="database"/>
             <property name="eclipselink.logging.level" value="INFO"/>
             <property name="eclipselink.logging.parameters" value="true"/>
-
             <property name="eclipselink.target-database" value="PostgreSQL"/>
-
-            <property name="eclipselink.connection-pool.default.initial" value="5"/>
-            <property name="eclipselink.connection-pool.default.min" value="5"/>
-            <property name="eclipselink.connection-pool.default.max" value="20"/>
+            <property name="eclipselink.cache.shared.default" value="false"/>
+            <property name="eclipselink.target-server" value="WildFly"/>
         </properties>
     </persistence-unit>
 </persistence>

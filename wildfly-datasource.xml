@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Этот файл нужно скопировать в $WILDFLY_HOME/standalone/deployments/
+    Или разместить в WAR файле как META-INF/human-being-manager-ds.xml
+    
+    Также можно создать через WildFly CLI:
+    /subsystem=datasources/data-source=HumanBeingDS:add(jndi-name=java:/jboss/datasources/HumanBeingDS, driver-name=postgresql, connection-url=jdbc:postgresql://localhost:5432/humanbeingdb, user-name=your_user, password=your_password)
+-->
+<datasources xmlns="http://www.jboss.org/ironjacamar/schema"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://www.jboss.org/ironjacamar/schema
+             http://www.jboss.org/ironjacamar/schema/datasources_1_0.xsd">
+    
+    <datasource jndi-name="java:/jboss/datasources/HumanBeingDS"
+                pool-name="HumanBeingDS"
+                enabled="true"
+                use-java-context="true">
+        
+        <connection-url>jdbc:postgresql://localhost:5432/humanbeingdb</connection-url>
+        <driver>postgresql</driver>
+        <security>
+            <user-name>your_user</user-name>
+            <password>your_password</password>
+        </security>
+        
+        <!-- Connection pool settings -->
+        <pool>
+            <min-pool-size>5</min-pool-size>
+            <max-pool-size>20</max-pool-size>
+            <prefill>true</prefill>
+        </pool>
+        
+        <!-- Connection validation -->
+        <validation>
+            <validate-on-match>true</validate-on-match>
+            <background-validation>true</background-validation>
+            <background-validation-millis>60000</background-validation-millis>
+            <valid-connection-checker class-name="org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLValidConnectionChecker"/>
+            <exception-sorter class-name="org.jboss.jca.adapters.jdbc.extensions.postgres.PostgreSQLExceptionSorter"/>
+        </validation>
+        
+        <!-- Timeout settings -->
+        <timeout>
+            <idle-timeout-minutes>15</idle-timeout-minutes>
+            <allocation-retry>3</allocation-retry>
+            <allocation-retry-wait-millis>2000</allocation-retry-wait-millis>
+        </timeout>
+    </datasource>
+    
+    <!-- PostgreSQL Driver configuration -->
+    <drivers>
+        <driver name="postgresql" module="org.postgresql">
+            <xa-datasource-class>org.postgresql.xa.PGXADataSource</xa-datasource-class>
+        </driver>
+    </drivers>
+</datasources>
+

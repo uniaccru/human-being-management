@@ -11,12 +11,15 @@ import com.humanbeingmanager.dto.HumanBeingDto;
 import com.humanbeingmanager.dto.CarDto;
 import com.humanbeingmanager.dto.CoordinatesDto;
 import com.humanbeingmanager.mapper.EntityDtoMapper;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ejb.Stateless;
+import jakarta.ejb.TransactionAttribute;
+import jakarta.ejb.TransactionAttributeType;
+import jakarta.ejb.SessionContext;
+import jakarta.ejb.EJB;
+import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityTransaction;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Optional;
@@ -24,75 +27,55 @@ import java.util.Set;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
-@ApplicationScoped
+@Stateless
+@TransactionAttribute(TransactionAttributeType.REQUIRED)
 public class HumanBeingService {
 
     private static final Logger LOGGER = Logger.getLogger(HumanBeingService.class.getName());
 
-    @Inject
+    @EJB
     private HumanBeingDao humanBeingDao;
 
-    @Inject
+    @EJB
     private CarDao carDao;
 
     @Inject
     private Validator validator;
 
     @Inject
-    private EntityManager entityManager;
-
-    @Inject
     private EntityDtoMapper mapper;
 
+    @Resource
+    private SessionContext sessionContext;
+
+    @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public HumanBeing createHumanBeing(HumanBeing humanBeing) throws ValidationException {
         LOGGER.log(Level.INFO, "Creating new HumanBeing: {0}", humanBeing.getName());
         
-        // Управляем транзакцией вручную для обеспечения атомарности и работы блокировки
-        EntityTransaction transaction = entityManager.getTransaction();
-        boolean transactionStartedHere = false;
-        
-        try {
-            // Начинаем транзакцию если её нет
-            if (!transaction.isActive()) {
-                transaction.begin();
-                transactionStartedHere = true;
-            }
-            
-            // Устанавливаем creationDate автоматически при создании
-            if (humanBeing.getCreationDate() == null) {
-                humanBeing.setCreationDate(new java.util.Date());
-            }
-            
-            // Обработка MACHINE_GUN: устанавливаем impactSpeed = 20 если не заполнено
-            applyMachineGunDefault(humanBeing);
-            
-            validateHumanBeing(humanBeing);
-            validateBusinessRules(humanBeing, false, null);
-            
-            if (humanBeing.getCar() != null && humanBeing.getCar().getId() == null) {
-                Car savedCar = carDao.create(humanBeing.getCar());
-                humanBeing.setCar(savedCar);
-            }
-
-            HumanBeing created = humanBeingDao.create(humanBeing);
-            
-            // Коммитим транзакцию если мы её начали
-            if (transactionStartedHere && transaction.isActive()) {
-                transaction.commit();
-            }
-            
-            LOGGER.log(Level.INFO, "Successfully created HumanBeing with ID: {0}", created.getId());
-            
-            return created;
-        } catch (Exception e) {
-            // Откатываем транзакцию если мы её начали
-            if (transactionStartedHere && transaction.isActive()) {
-                transaction.rollback();
-            }
-            throw e;
+        // Устанавливаем creationDate автоматически при создании
+        if (humanBeing.getCreationDate() == null) {
+            humanBeing.setCreationDate(new java.util.Date());
         }
+        
+        // Обработка MACHINE_GUN: устанавливаем impactSpeed = 20 если не заполнено
+        applyMachineGunDefault(humanBeing);
+        
+        validateHumanBeing(humanBeing);
+        validateBusinessRules(humanBeing, false, null);
+        
+        if (humanBeing.getCar() != null && humanBeing.getCar().getId() == null) {
+            Car savedCar = carDao.create(humanBeing.getCar());
+            humanBeing.setCar(savedCar);
+        }
+
+        HumanBeing created = humanBeingDao.create(humanBeing);
+        
+        LOGGER.log(Level.INFO, "Successfully created HumanBeing with ID: {0}", created.getId());
+        
+        return created;
     }
 
+    @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public HumanBeing updateHumanBeing(HumanBeing humanBeing) throws ValidationException, EntityNotFoundException {
         LOGGER.log(Level.INFO, "Updating HumanBeing with ID: {0}", humanBeing.getId());
         
@@ -150,6 +133,7 @@ public class HumanBeingService {
         return humanBeingDao.findAll(page, size, filterColumn, filterValue, sortColumn, sortDirection);
     }
 
+    @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public boolean deleteHumanBeing(Long id) throws EntityNotFoundException {
         LOGGER.log(Level.INFO, "Deleting HumanBeing with ID: {0}", id);
         
@@ -201,11 +185,13 @@ public class HumanBeingService {
         return humanBeingDao.getSoundtrackStartsWith(substring);
     }
 
+    @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public int deleteHeroesWithoutToothpicks() {
         LOGGER.log(Level.INFO, "Deleting all heroes without toothpicks");
         return humanBeingDao.deleteHeroesWithoutToothpicks();
     }
 
+    @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public int setAllMoodToSadness() {
         LOGGER.log(Level.INFO, "Setting all heroes mood to SADNESS");
         return humanBeingDao.setAllMoodToSadness();
@@ -405,23 +391,15 @@ public class HumanBeingService {
         }
     }
 
+    @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public ImportResult importHumanBeings(List<HumanBeingDto> humanBeingDtos) {
         LOGGER.log(Level.INFO, "Starting import of {0} HumanBeings", humanBeingDtos.size());
-        
-        // Управляем транзакцией вручную для обеспечения атомарности импорта
-        EntityTransaction transaction = entityManager.getTransaction();
-        boolean transactionStartedHere = false;
         
         List<String> errors = new ArrayList<>();
         int successfullyImported = 0;
         int failed = 0;
         
         try {
-            // Начинаем транзакцию если её нет
-            if (!transaction.isActive()) {
-                transaction.begin();
-                transactionStartedHere = true;
-            }
             // Предварительная валидация всех объектов
             for (int i = 0; i < humanBeingDtos.size(); i++) {
                 HumanBeingDto dto = humanBeingDtos.get(i);
@@ -434,11 +412,9 @@ public class HumanBeingService {
             }
             
             // Если есть ошибки валидации, возвращаем ошибку БЕЗ импорта
+            // Откатываем транзакцию через SessionContext
             if (!errors.isEmpty()) {
-                // Откатываем транзакцию если мы её начали
-                if (transactionStartedHere && transaction.isActive()) {
-                    transaction.rollback();
-                }
+                sessionContext.setRollbackOnly();
                 return ImportResult.failure("Validation failed - no objects imported", humanBeingDtos.size(), 
                                           0, failed, errors);
             }
@@ -512,20 +488,11 @@ public class HumanBeingService {
                 successfullyImported++;
             }
             
-            // Коммитим транзакцию если мы её начали
-            if (transactionStartedHere && transaction.isActive()) {
-                transaction.commit();
-            }
-            
             LOGGER.log(Level.INFO, "Import completed successfully: {0} objects imported", successfullyImported);
             
             return ImportResult.success(humanBeingDtos.size(), successfullyImported);
             
         } catch (Exception e) {
-            // Откатываем транзакцию если мы её начали
-            if (transactionStartedHere && transaction.isActive()) {
-                transaction.rollback();
-            }
             LOGGER.log(Level.SEVERE, "Import failed with exception - all changes rolled back", e);
             return ImportResult.failure("Import failed - no objects imported: " + e.getMessage(), 
                                       humanBeingDtos.size(), 0, humanBeingDtos.size(), errors);
