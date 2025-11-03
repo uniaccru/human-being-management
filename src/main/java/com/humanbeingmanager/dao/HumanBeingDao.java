@@ -15,18 +15,22 @@ public class HumanBeingDao {
 
     public HumanBeing create(HumanBeing humanBeing) {
         EntityTransaction transaction = entityManager.getTransaction();
+        boolean transactionStartedHere = false;
         try {
             if (!transaction.isActive()) {
                 transaction.begin();
+                transactionStartedHere = true;
             }
             entityManager.persist(humanBeing);
             entityManager.flush();
-            if (transaction.isActive()) {
+            // Коммитим только если мы начали транзакцию здесь
+            if (transactionStartedHere && transaction.isActive()) {
                 transaction.commit();
             }
             return humanBeing;
         } catch (Exception e) {
-            if (transaction.isActive()) {
+            // Откатываем только если мы начали транзакцию здесь
+            if (transactionStartedHere && transaction.isActive()) {
                 transaction.rollback();
             }
             throw e;
@@ -185,6 +189,30 @@ public class HumanBeingDao {
             "SELECT h FROM HumanBeing h WHERE h.mood = :mood", HumanBeing.class);
         query.setParameter("mood", mood);
         return query.getResultList();
+    }
+
+    public Optional<HumanBeing> findByCoordinates(Integer x, double y, Long excludeId) {
+        StringBuilder jpql = new StringBuilder(
+            "SELECT h FROM HumanBeing h WHERE h.coordinates.x = :x AND h.coordinates.y = :y");
+        
+        if (excludeId != null) {
+            jpql.append(" AND h.id != :excludeId");
+        }
+        
+        TypedQuery<HumanBeing> query = entityManager.createQuery(jpql.toString(), HumanBeing.class);
+        query.setParameter("x", x);
+        query.setParameter("y", y);
+        
+        if (excludeId != null) {
+            query.setParameter("excludeId", excludeId);
+        }
+        
+        // Используем PESSIMISTIC_WRITE для блокировки строк при проверке уникальности координат
+        // Это предотвращает race condition при одновременном создании объектов с одинаковыми координатами
+        query.setLockMode(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        
+        List<HumanBeing> results = query.getResultList();
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
     public void refresh(HumanBeing humanBeing) {

@@ -1,96 +1,66 @@
-package com.humanbeingmanager.entity;
+package com.humanbeingmanager.dto;
 
-import jakarta.persistence.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.Date;
 
-@Entity
-@Table(name = "human_beings")
-@NamedQueries({
-    @NamedQuery(name = "HumanBeing.findAll", query = "SELECT h FROM HumanBeing h"),
-    @NamedQuery(name = "HumanBeing.findById", query = "SELECT h FROM HumanBeing h WHERE h.id = :id"),
-    @NamedQuery(name = "HumanBeing.countAll", query = "SELECT COUNT(h) FROM HumanBeing h")
-})
-public class HumanBeing {
+public class HumanBeingDto {
     
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "name", nullable = false)
     @NotNull(message = "Name cannot be null")
     @NotBlank(message = "Name cannot be empty")
+    @Size(max = 100, message = "Name must be 100 characters or less")
     private String name;
     
-    @Embedded
     @Valid
     @NotNull(message = "Coordinates cannot be null")
-    private Coordinates coordinates;
+    private CoordinatesDto coordinates;
     
-    @Column(name = "creation_date", nullable = false)
-    @NotNull(message = "Creation date cannot be null")
-    @Temporal(TemporalType.TIMESTAMP)
     private Date creationDate;
     
-    @Column(name = "real_hero", nullable = false)
     private boolean realHero;
     
-    @Column(name = "has_toothpick")
     private Boolean hasToothpick;
     
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "car_id", nullable = false)
-    @NotNull(message = "Car cannot be null")
     @Valid
-    private Car car;
+    @NotNull(message = "Car cannot be null")
+    private CarDto car;
     
-    @Column(name = "mood", nullable = false)
-    @Enumerated(EnumType.STRING)
     @NotNull(message = "Mood cannot be null")
-    private Mood mood;
+    private String mood;
     
-    @Column(name = "impact_speed")
     private float impactSpeed;
     
-    @Column(name = "soundtrack_name", nullable = false)
     @NotNull(message = "Soundtrack name cannot be null")
     @NotBlank(message = "Soundtrack name cannot be empty")
+    @Size(max = 100, message = "Soundtrack name must be 100 characters or less")
     private String soundtrackName;
     
-    @Column(name = "minutes_of_waiting", nullable = false)
     @NotNull(message = "Minutes of waiting cannot be null")
     private Long minutesOfWaiting;
     
-    @Column(name = "weapon_type", nullable = false)
-    @Enumerated(EnumType.STRING)
     @NotNull(message = "Weapon type cannot be null")
-    private WeaponType weaponType;
+    private String weaponType;
 
-    public HumanBeing() {
-        this.creationDate = new Date();
-    }
+    public HumanBeingDto() {}
 
-    public HumanBeing(String name, Coordinates coordinates, boolean realHero, 
-                     Car car, Mood mood, float impactSpeed, String soundtrackName, 
-                     Long minutesOfWaiting, WeaponType weaponType) {
-        this();
+    public HumanBeingDto(Long id, String name, CoordinatesDto coordinates, Date creationDate, 
+                        boolean realHero, Boolean hasToothpick, CarDto car, String mood, 
+                        float impactSpeed, String soundtrackName, Long minutesOfWaiting, 
+                        String weaponType) {
+        this.id = id;
         this.name = name;
         this.coordinates = coordinates;
+        this.creationDate = creationDate;
         this.realHero = realHero;
+        this.hasToothpick = hasToothpick;
         this.car = car;
         this.mood = mood;
         this.impactSpeed = impactSpeed;
         this.soundtrackName = soundtrackName;
         this.minutesOfWaiting = minutesOfWaiting;
         this.weaponType = weaponType;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        if (creationDate == null) {
-            creationDate = new Date();
-        }
     }
 
     public Long getId() {
@@ -109,11 +79,11 @@ public class HumanBeing {
         this.name = name;
     }
 
-    public Coordinates getCoordinates() {
+    public CoordinatesDto getCoordinates() {
         return coordinates;
     }
 
-    public void setCoordinates(Coordinates coordinates) {
+    public void setCoordinates(CoordinatesDto coordinates) {
         this.coordinates = coordinates;
     }
 
@@ -141,19 +111,19 @@ public class HumanBeing {
         this.hasToothpick = hasToothpick;
     }
 
-    public Car getCar() {
+    public CarDto getCar() {
         return car;
     }
 
-    public void setCar(Car car) {
+    public void setCar(CarDto car) {
         this.car = car;
     }
 
-    public Mood getMood() {
+    public String getMood() {
         return mood;
     }
 
-    public void setMood(Mood mood) {
+    public void setMood(String mood) {
         this.mood = mood;
     }
 
@@ -181,17 +151,17 @@ public class HumanBeing {
         this.minutesOfWaiting = minutesOfWaiting;
     }
 
-    public WeaponType getWeaponType() {
+    public String getWeaponType() {
         return weaponType;
     }
 
-    public void setWeaponType(WeaponType weaponType) {
+    public void setWeaponType(String weaponType) {
         this.weaponType = weaponType;
     }
 
     @Override
     public String toString() {
-        return "HumanBeing{" +
+        return "HumanBeingDto{" +
                 "id=" + id +
                 ", name='" + name + '\'' +
                 ", coordinates=" + coordinates +
@@ -199,24 +169,13 @@ public class HumanBeing {
                 ", realHero=" + realHero +
                 ", hasToothpick=" + hasToothpick +
                 ", car=" + car +
-                ", mood=" + mood +
+                ", mood='" + mood + '\'' +
                 ", impactSpeed=" + impactSpeed +
                 ", soundtrackName='" + soundtrackName + '\'' +
                 ", minutesOfWaiting=" + minutesOfWaiting +
-                ", weaponType=" + weaponType +
+                ", weaponType='" + weaponType + '\'' +
                 '}';
     }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof HumanBeing)) return false;
-        HumanBeing that = (HumanBeing) o;
-        return id != null && id.equals(that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }
+
+

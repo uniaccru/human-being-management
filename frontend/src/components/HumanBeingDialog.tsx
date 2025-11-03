@@ -55,6 +55,7 @@ const HumanBeingDialog: React.FC<HumanBeingDialogProps> = ({
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors, isValid }
   } = useForm({
     resolver: yupResolver(humanBeingSchema) as any,
@@ -74,6 +75,15 @@ const HumanBeingDialog: React.FC<HumanBeingDialogProps> = ({
   });
 
   const realHero = watch('realHero');
+  const weaponType = watch('weaponType');
+  const impactSpeed = watch('impactSpeed');
+
+  // Автоматическая установка impactSpeed=20 для MACHINE_GUN
+  useEffect(() => {
+    if (weaponType === WeaponType.MACHINE_GUN && (impactSpeed === 0 || impactSpeed === null || impactSpeed === undefined)) {
+      setValue('impactSpeed', 20, { shouldValidate: true });
+    }
+  }, [weaponType, impactSpeed, setValue]);
 
   useEffect(() => {
     if (open) {
@@ -375,19 +385,42 @@ const HumanBeingDialog: React.FC<HumanBeingDialogProps> = ({
                 <Controller
                   name="impactSpeed"
                   control={control}
-                  render={({ field }) => (
-                    <ValidatedTextField
-                      {...field}
-                      label="Impact Speed *"
-                      type="number"
-                      fullWidth
-                      validationType="impactSpeed"
-                      realHero={realHero}
-                      error={!!errors.impactSpeed}
-                      helperText={errors.impactSpeed?.message}
-                      disabled={loading}
-                    />
-                  )}
+                  render={({ field }) => {
+                    // Проверка для MACHINE_GUN
+                    const isMachineGun = weaponType === WeaponType.MACHINE_GUN;
+                    const hasError = !!errors.impactSpeed || (isMachineGun && field.value < 20);
+                    const helperText = hasError 
+                      ? (isMachineGun && field.value < 20 
+                          ? 'MACHINE_GUN requires impactSpeed >= 20' 
+                          : errors.impactSpeed?.message)
+                      : '';
+                    
+                    return (
+                      <ValidatedTextField
+                        {...field}
+                        label="Impact Speed *"
+                        type="number"
+                        fullWidth
+                        validationType="impactSpeed"
+                        realHero={realHero}
+                        error={hasError}
+                        helperText={helperText}
+                        disabled={loading}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            '&.Mui-focused fieldset': {
+                              borderColor: hasError ? 'error.main' : undefined
+                            },
+                            ...(hasError && {
+                              '& fieldset': {
+                                borderColor: 'error.main'
+                              }
+                            })
+                          }
+                        }}
+                      />
+                    );
+                  }}
                 />
               </Grid>
 

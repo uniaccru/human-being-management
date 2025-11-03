@@ -1,0 +1,84 @@
+package com.humanbeingmanager.service;
+
+import java.util.List;
+
+public class ImportResult {
+    private boolean success;
+    private String errorMessage;
+    private int totalProcessed;
+    private int successfullyImported;
+    private int failed;
+    private List<String> errors;
+
+    public ImportResult() {}
+
+    public ImportResult(boolean success, String errorMessage, int totalProcessed, 
+                       int successfullyImported, int failed, List<String> errors) {
+        this.success = success;
+        this.errorMessage = errorMessage;
+        this.totalProcessed = totalProcessed;
+        this.successfullyImported = successfullyImported;
+        this.failed = failed;
+        this.errors = errors;
+    }
+
+    public static ImportResult success(int totalProcessed, int successfullyImported) {
+        return new ImportResult(true, null, totalProcessed, successfullyImported, 0, null);
+    }
+
+    public static ImportResult failure(String errorMessage, int totalProcessed, 
+                                     int successfullyImported, int failed, List<String> errors) {
+        return new ImportResult(false, errorMessage, totalProcessed, successfullyImported, failed, errors);
+    }
+
+    // Getters and setters
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public int getTotalProcessed() {
+        return totalProcessed;
+    }
+
+    public void setTotalProcessed(int totalProcessed) {
+        this.totalProcessed = totalProcessed;
+    }
+
+    public int getSuccessfullyImported() {
+        return successfullyImported;
+    }
+
+    public void setSuccessfullyImported(int successfullyImported) {
+        this.successfullyImported = successfullyImported;
+    }
+
+    public int getFailed() {
+        return failed;
+    }
+
+    public void setFailed(int failed) {
+        this.failed = failed;
+    }
+
+    public List<String> getErrors() {
+        return errors;
+    }
+
+    public void setErrors(List<String> errors) {
+        this.errors = errors;
+    }
+}
+
+

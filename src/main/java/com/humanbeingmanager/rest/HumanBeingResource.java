@@ -1,7 +1,9 @@
 package com.humanbeingmanager.rest;
 
+import com.humanbeingmanager.dto.*;
 import com.humanbeingmanager.entity.HumanBeing;
 import com.humanbeingmanager.entity.Car;
+import com.humanbeingmanager.mapper.EntityDtoMapper;
 import com.humanbeingmanager.service.HumanBeingService;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -10,6 +12,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -24,6 +27,9 @@ public class HumanBeingResource {
     @Inject
     private HumanBeingService humanBeingService;
 
+    @Inject
+    private EntityDtoMapper mapper;
+
     @GET
     public Response getAllHumanBeings(@QueryParam("page") @DefaultValue("0") int page,
                                      @QueryParam("size") @DefaultValue("10") int size,
@@ -36,11 +42,14 @@ public class HumanBeingResource {
                       new Object[]{page, size, filterColumn, filterValue, sortColumn, sortDirection});
             List<HumanBeing> humanBeings = humanBeingService.getAllHumanBeings(page, size, filterColumn, filterValue, sortColumn, sortDirection);
             Long totalCount = humanBeingService.getHumanBeingCount(filterColumn, filterValue);
-            return Response.ok(new PaginatedResponse(humanBeings, totalCount, page, size)).build();
+            List<HumanBeingDto> humanBeingDtos = humanBeings.stream()
+                    .map(mapper::toDto)
+                    .collect(Collectors.toList());
+            return Response.ok(new PaginatedResponseDto<>(humanBeingDtos, totalCount, page, size)).build();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error retrieving HumanBeings", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                          .entity(new ErrorResponse("Error retrieving HumanBeings: " + e.getMessage()))
+                          .entity(ApiResponseDto.error("Error retrieving HumanBeings: " + e.getMessage()))
                           .build();
         }
     }
@@ -53,79 +62,80 @@ public class HumanBeingResource {
             Optional<HumanBeing> humanBeing = humanBeingService.getHumanBeingById(id);
             
             if (humanBeing.isPresent()) {
-                return Response.ok(humanBeing.get()).build();
+                return Response.ok(mapper.toDto(humanBeing.get())).build();
             } else {
                 return Response.status(Response.Status.NOT_FOUND)
-                              .entity(new ErrorResponse("HumanBeing with ID " + id + " not found"))
+                              .entity(ApiResponseDto.error("HumanBeing with ID " + id + " not found"))
                               .build();
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error retrieving HumanBeing with ID: " + id, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                          .entity(new ErrorResponse("Error retrieving HumanBeing: " + e.getMessage()))
+                          .entity(ApiResponseDto.error("Error retrieving HumanBeing: " + e.getMessage()))
                           .build();
         }
     }
 
     @POST
-    public Response createHumanBeing(HumanBeing humanBeing) {
+    public Response createHumanBeing(HumanBeingDto humanBeingDto) {
         try {
             LOGGER.log(Level.INFO, "POST /api/humanbeings - Creating new HumanBeing: {0}", 
-                      humanBeing != null ? humanBeing.getName() : "null");
+                      humanBeingDto != null ? humanBeingDto.getName() : "null");
             
-            if (humanBeing == null) {
+            if (humanBeingDto == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                              .entity(new ValidationErrorResponse("HumanBeing data is required", "VALIDATION_ERROR"))
+                              .entity(ApiResponseDto.validationError("HumanBeing data is required"))
                               .build();
             }
 
+            HumanBeing humanBeing = mapper.toEntity(humanBeingDto);
             HumanBeing created = humanBeingService.createHumanBeing(humanBeing);
-            return Response.status(Response.Status.CREATED).entity(created).build();
+            return Response.status(Response.Status.CREATED).entity(mapper.toDto(created)).build();
             
         } catch (HumanBeingService.ValidationException e) {
             LOGGER.log(Level.WARNING, "Validation error creating HumanBeing", e);
             return Response.status(Response.Status.BAD_REQUEST)
-                          .entity(new ValidationErrorResponse("Validation error: " + e.getMessage(), "VALIDATION_ERROR"))
+                          .entity(ApiResponseDto.validationError(e.getMessage()))
                           .build();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error creating HumanBeing", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                          .entity(new ErrorResponse("Error creating HumanBeing: " + e.getMessage()))
+                          .entity(ApiResponseDto.error("Error creating HumanBeing: " + e.getMessage()))
                           .build();
         }
     }
 
     @PUT
     @Path("/{id}")
-    public Response updateHumanBeing(@PathParam("id") Long id, HumanBeing humanBeing) {
+    public Response updateHumanBeing(@PathParam("id") Long id, HumanBeingDto humanBeingDto) {
         try {
             LOGGER.log(Level.INFO, "PUT /api/humanbeings/{0} - Updating HumanBeing", id);
             
-            if (humanBeing == null) {
+            if (humanBeingDto == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                              .entity(new ValidationErrorResponse("HumanBeing data is required", "VALIDATION_ERROR"))
+                              .entity(ApiResponseDto.validationError("HumanBeing data is required"))
                               .build();
             }
 
-            humanBeing.setId(id);
-            
+            humanBeingDto.setId(id);
+            HumanBeing humanBeing = mapper.toEntity(humanBeingDto);
             HumanBeing updated = humanBeingService.updateHumanBeing(humanBeing);
-            return Response.ok(updated).build();
+            return Response.ok(mapper.toDto(updated)).build();
             
         } catch (HumanBeingService.ValidationException e) {
             LOGGER.log(Level.WARNING, "Validation error updating HumanBeing", e);
             return Response.status(Response.Status.BAD_REQUEST)
-                          .entity(new ValidationErrorResponse("Validation error: " + e.getMessage(), "VALIDATION_ERROR"))
+                          .entity(ApiResponseDto.validationError(e.getMessage()))
                           .build();
         } catch (HumanBeingService.EntityNotFoundException e) {
             LOGGER.log(Level.WARNING, "HumanBeing not found for update", e);
             return Response.status(Response.Status.NOT_FOUND)
-                          .entity(new ErrorResponse(e.getMessage()))
+                          .entity(ApiResponseDto.error(e.getMessage()))
                           .build();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error updating HumanBeing with ID: " + id, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                          .entity(new ErrorResponse("Error updating HumanBeing: " + e.getMessage()))
+                          .entity(ApiResponseDto.error("Error updating HumanBeing: " + e.getMessage()))
                           .build();
         }
     }
@@ -143,19 +153,19 @@ public class HumanBeingResource {
                 return Response.noContent().build();
             } else {
                 return Response.status(Response.Status.NOT_FOUND)
-                              .entity(new ErrorResponse("HumanBeing with ID " + id + " not found"))
+                              .entity(ApiResponseDto.error("HumanBeing with ID " + id + " not found"))
                               .build();
             }
             
         } catch (HumanBeingService.EntityNotFoundException e) {
             LOGGER.log(Level.WARNING, "HumanBeing not found for deletion", e);
             return Response.status(Response.Status.NOT_FOUND)
-                          .entity(new ErrorResponse(e.getMessage()))
+                          .entity(ApiResponseDto.error(e.getMessage()))
                           .build();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error deleting HumanBeing with ID: " + id, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                          .entity(new ErrorResponse("Error deleting HumanBeing: " + e.getMessage()))
+                          .entity(ApiResponseDto.error("Error deleting HumanBeing: " + e.getMessage()))
                           .build();
         }
     }
@@ -167,11 +177,11 @@ public class HumanBeingResource {
         try {
             LOGGER.info("GET /api/humanbeings/count - Getting count");
             Long count = humanBeingService.getHumanBeingCount();
-            return Response.ok(new CountResponse(count)).build();
+            return Response.ok(ApiResponseDto.success(count)).build();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error getting HumanBeing count", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                          .entity(new ErrorResponse("Error getting count: " + e.getMessage()))
+                          .entity(ApiResponseDto.error("Error getting count: " + e.getMessage()))
                           .build();
         }
     }
@@ -182,11 +192,14 @@ public class HumanBeingResource {
         try {
             LOGGER.info("GET /api/humanbeings/cars - Retrieving all Cars");
             List<Car> cars = humanBeingService.getAllCars();
-            return Response.ok(cars).build();
+            List<CarDto> carDtos = cars.stream()
+                    .map(mapper::toDto)
+                    .collect(Collectors.toList());
+            return Response.ok(carDtos).build();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error retrieving all Cars", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                          .entity(new ErrorResponse("Error retrieving Cars: " + e.getMessage()))
+                          .entity(ApiResponseDto.error("Error retrieving Cars: " + e.getMessage()))
                           .build();
         }
     }
@@ -194,175 +207,29 @@ public class HumanBeingResource {
 
     @POST
     @Path("/validate")
-    public Response validateHumanBeing(HumanBeing humanBeing) {
+    public Response validateHumanBeing(HumanBeingDto humanBeingDto) {
         try {
             LOGGER.log(Level.INFO, "POST /api/humanbeings/validate - Validating HumanBeing");
             
-            if (humanBeing == null) {
+            if (humanBeingDto == null) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                              .entity(new ValidationErrorResponse("HumanBeing data is required", "VALIDATION_ERROR"))
+                              .entity(ApiResponseDto.validationError("HumanBeing data is required"))
                               .build();
             }
 
             try {
+                HumanBeing humanBeing = mapper.toEntity(humanBeingDto);
                 humanBeingService.createHumanBeing(humanBeing);
-                return Response.ok(new ValidationErrorResponse("Validation successful", "SUCCESS")).build();
+                return Response.ok(ApiResponseDto.success("Validation successful")).build();
             } catch (HumanBeingService.ValidationException e) {
-                return Response.ok(new ValidationErrorResponse("Validation failed: " + e.getMessage(), "VALIDATION_ERROR")).build();
+                return Response.ok(ApiResponseDto.validationError(e.getMessage())).build();
             }
             
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error validating HumanBeing", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                          .entity(new ErrorResponse("Error validating HumanBeing: " + e.getMessage()))
+                          .entity(ApiResponseDto.error("Error validating HumanBeing: " + e.getMessage()))
                           .build();
-        }
-    }
-
-    public static class ErrorResponse {
-        private String message;
-        private long timestamp;
-
-        public ErrorResponse() {
-            this.timestamp = System.currentTimeMillis();
-        }
-
-        public ErrorResponse(String message) {
-            this();
-            this.message = message;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
-
-        public long getTimestamp() {
-            return timestamp;
-        }
-
-        public void setTimestamp(long timestamp) {
-            this.timestamp = timestamp;
-        }
-    }
-
-
-    public static class ValidationErrorResponse {
-        private String message;
-        private String type;
-        private long timestamp;
-
-        public ValidationErrorResponse() {
-            this.timestamp = System.currentTimeMillis();
-        }
-
-        public ValidationErrorResponse(String message, String type) {
-            this();
-            this.message = message;
-            this.type = type;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public void setMessage(String message) {
-            this.message = message;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public long getTimestamp() {
-            return timestamp;
-        }
-
-        public void setTimestamp(long timestamp) {
-            this.timestamp = timestamp;
-        }
-    }
-
-    public static class CountResponse {
-        private Long count;
-
-        public CountResponse() {}
-
-        public CountResponse(Long count) {
-            this.count = count;
-        }
-
-        public Long getCount() {
-            return count;
-        }
-
-        public void setCount(Long count) {
-            this.count = count;
-        }
-    }
-
-    public static class PaginatedResponse {
-        private List<HumanBeing> content;
-        private Long totalElements;
-        private int totalPages;
-        private int currentPage;
-        private int pageSize;
-
-        public PaginatedResponse() {}
-
-        public PaginatedResponse(List<HumanBeing> content, Long totalElements, int currentPage, int pageSize) {
-            this.content = content;
-            this.totalElements = totalElements;
-            this.currentPage = currentPage;
-            this.pageSize = pageSize;
-            this.totalPages = (int) Math.ceil((double) totalElements / pageSize);
-        }
-
-        public List<HumanBeing> getContent() {
-            return content;
-        }
-
-        public void setContent(List<HumanBeing> content) {
-            this.content = content;
-        }
-
-        public Long getTotalElements() {
-            return totalElements;
-        }
-
-        public void setTotalElements(Long totalElements) {
-            this.totalElements = totalElements;
-        }
-
-        public int getTotalPages() {
-            return totalPages;
-        }
-
-        public void setTotalPages(int totalPages) {
-            this.totalPages = totalPages;
-        }
-
-        public int getCurrentPage() {
-            return currentPage;
-        }
-
-        public void setCurrentPage(int currentPage) {
-            this.currentPage = currentPage;
-        }
-
-        public int getPageSize() {
-            return pageSize;
-        }
-
-        public void setPageSize(int pageSize) {
-            this.pageSize = pageSize;
         }
     }
 }

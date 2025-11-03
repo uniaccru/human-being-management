@@ -15,18 +15,22 @@ public class CarDao {
 
     public Car create(Car car) {
         EntityTransaction transaction = entityManager.getTransaction();
+        boolean transactionStartedHere = false;
         try {
             if (!transaction.isActive()) {
                 transaction.begin();
+                transactionStartedHere = true;
             }
             entityManager.persist(car);
             entityManager.flush();
-            if (transaction.isActive()) {
+            // Коммитим только если мы начали транзакцию здесь
+            if (transactionStartedHere && transaction.isActive()) {
                 transaction.commit();
             }
             return car;
         } catch (Exception e) {
-            if (transaction.isActive()) {
+            // Откатываем только если мы начали транзакцию здесь
+            if (transactionStartedHere && transaction.isActive()) {
                 transaction.rollback();
             }
             throw e;

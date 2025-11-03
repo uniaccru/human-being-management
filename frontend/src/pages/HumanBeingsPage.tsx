@@ -9,11 +9,14 @@ import {
   Select, 
   MenuItem, 
   Button,
-  Grid
+  Grid,
+  Tabs,
+  Tab
 } from '@mui/material';
 import { Clear as ClearIcon } from '@mui/icons-material';
 import HumanBeingTable from '../components/HumanBeingTable';
 import HumanBeingDialog from '../components/HumanBeingDialog';
+import ImportDialog from '../components/ImportDialog';
 import { HumanBeing } from '../types';
 
 interface HumanBeingsPageProps {
@@ -24,6 +27,7 @@ const HumanBeingsPage: React.FC<HumanBeingsPageProps> = ({ onRefresh }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedHumanBeing, setSelectedHumanBeing] = useState<HumanBeing | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [activeTab, setActiveTab] = useState(0);
 
   const [filterColumn, setFilterColumn] = useState<string>('');
   const [filterValue, setFilterValue] = useState<string>('');
@@ -74,6 +78,13 @@ const HumanBeingsPage: React.FC<HumanBeingsPageProps> = ({ onRefresh }) => {
       </Typography>
 
       <Paper sx={{ p: 2, mb: 3 }}>
+        <Tabs value={activeTab} onChange={(_e, newValue) => setActiveTab(newValue)}>
+          <Tab label="Records" />
+          <Tab label="Import" />
+        </Tabs>
+
+        {activeTab === 0 && (
+        <Box>
         <Typography variant="h6" gutterBottom>
           Filter & Sort
         </Typography>
@@ -157,24 +168,36 @@ const HumanBeingsPage: React.FC<HumanBeingsPageProps> = ({ onRefresh }) => {
             </Box>
           </Grid>
         </Grid>
+        </Box>
+        )}
+
+        {activeTab === 1 && (
+          <Box sx={{ pt: 2 }}>
+            <ImportDialog onImportComplete={handleDialogSave} />
+          </Box>
+        )}
       </Paper>
 
-      <HumanBeingTable
-        onEdit={handleEdit}
-        onAdd={handleAdd}
-        refreshTrigger={refreshTrigger}
-        filterColumn={filterColumn}
-        filterValue={filterValue}
-        sortColumn={sortColumn}
-        sortDirection={sortDirection}
-      />
+      {activeTab === 0 && (
+        <>
+          <HumanBeingTable
+            onEdit={handleEdit}
+            onAdd={handleAdd}
+            refreshTrigger={refreshTrigger}
+            filterColumn={filterColumn}
+            filterValue={filterValue}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+          />
 
-      <HumanBeingDialog
-        open={dialogOpen}
-        onClose={handleDialogClose}
-        onSave={handleDialogSave}
-        humanBeing={selectedHumanBeing}
-      />
+          <HumanBeingDialog
+            open={dialogOpen}
+            onClose={handleDialogClose}
+            onSave={handleDialogSave}
+            humanBeing={selectedHumanBeing}
+          />
+        </>
+      )}
     </Box>
   );
 };

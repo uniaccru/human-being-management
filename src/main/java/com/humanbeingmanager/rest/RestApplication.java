@@ -10,6 +10,7 @@ public class RestApplication extends ResourceConfig {
     public RestApplication() {
         register(HumanBeingResource.class);
         register(SpecialOperationsResource.class);
+        register(ImportResource.class);
         register(CorsFilter.class);
         register(new CdiHk2Binder());
     }

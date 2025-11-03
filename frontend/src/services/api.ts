@@ -15,13 +15,24 @@ const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Проверяем message (для стандартных ответов)
+    if (error.response?.data?.message) {
+      return Promise.reject(new Error(error.response.data.message));
+    }
+    // Проверяем error (для обратной совместимости)
     if (error.response?.data?.error) {
       return Promise.reject(new Error(error.response.data.error));
-    } else if (error.message) {
-      return Promise.reject(new Error(error.message));
-    } else {
-      return Promise.reject(new Error('An unknown error occurred'));
     }
+    // Проверяем data (для объектов с детальной информацией)
+    if (error.response?.data?.data?.errors) {
+      const errors = error.response.data.data.errors;
+      return Promise.reject(new Error('Validation errors: ' + (Array.isArray(errors) ? errors.join(', ') : errors)));
+    }
+    // Общая ошибка
+    if (error.message) {
+      return Promise.reject(new Error(error.message));
+    }
+    return Promise.reject(new Error('An unknown error occurred'));
   }
 );
 
@@ -138,6 +149,40 @@ export class SpecialOperationsApi {
   static async setAllMoodToSadness(): Promise<number> {
     const response: AxiosResponse<{updatedCount: number}> = await apiClient.put('/special-operations/set-all-mood-sadness');
     return response.data.updatedCount;
+  }
+}
+
+export interface ImportResult {
+  success: boolean;
+  message: string;
+  data: {
+    totalProcessed: number;
+    successfullyImported: number;
+    failed: number;
+    errors?: string[];
+  };
+}
+
+export interface ImportHistory {
+  id: number;
+  status: string;
+  username: string;
+  addedCount: number | null;
+  totalProcessed: number;
+  failedCount: number;
+  errorMessage: string | null;
+  createdAt: string;
+}
+
+export class ImportApi {
+  static async importHumanBeings(humanBeings: CreateHumanBeingRequest[]): Promise<ImportResult> {
+    const response: AxiosResponse<ImportResult> = await apiClient.post('/import/humanbeings', humanBeings);
+    return response.data;
+  }
+
+  static async getImportHistory(): Promise<ImportHistory[]> {
+    const response: AxiosResponse<ImportHistory[]> = await apiClient.get('/import/history');
+    return response.data;
   }
 }
 

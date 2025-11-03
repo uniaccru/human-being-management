@@ -13,6 +13,7 @@
         <class>com.humanbeingmanager.entity.Car</class>
         <class>com.humanbeingmanager.entity.Mood</class>
         <class>com.humanbeingmanager.entity.WeaponType</class>
+        <class>com.humanbeingmanager.entity.ImportHistory</class>
         
         <properties>
             <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
