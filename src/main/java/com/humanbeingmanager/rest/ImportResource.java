@@ -1,7 +1,7 @@
 package com.humanbeingmanager.rest;
 
 import com.humanbeingmanager.dto.*;
-import com.humanbeingmanager.service.HumanBeingService;
+import com.humanbeingmanager.service.ImportService;
 import com.humanbeingmanager.service.ImportResult;
 import com.humanbeingmanager.dao.ImportHistoryDao;
 import com.humanbeingmanager.entity.ImportHistory;
@@ -25,7 +25,7 @@ public class ImportResource {
     private static final Logger LOGGER = Logger.getLogger(ImportResource.class.getName());
 
     @EJB
-    private HumanBeingService humanBeingService;
+    private ImportService importService;
 
     @EJB
     private ImportHistoryDao importHistoryDao;
@@ -43,7 +43,7 @@ public class ImportResource {
                               .build();
             }
 
-            ImportResult result = humanBeingService.importHumanBeings(humanBeings);
+            ImportResult result = importService.importHumanBeings(humanBeings);
 
             String username = System.getProperty("user.name", "Unknown");
             String status = result.isSuccess() ? "SUCCESS" : "FAILED";

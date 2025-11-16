@@ -7,7 +7,6 @@ import com.humanbeingmanager.entity.Car;
 import com.humanbeingmanager.entity.Coordinates;
 import com.humanbeingmanager.entity.Mood;
 import com.humanbeingmanager.entity.WeaponType;
-import com.humanbeingmanager.dto.HumanBeingDto;
 import com.humanbeingmanager.dto.CarDto;
 import com.humanbeingmanager.dto.CoordinatesDto;
 import com.humanbeingmanager.mapper.EntityDtoMapper;
@@ -21,7 +20,6 @@ import jakarta.inject.Inject;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -254,7 +252,7 @@ public class HumanBeingService {
         }
     }
 
-
+    // ограничения на уникальность координат
     private void validateUniqueCoordinates(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
         if (humanBeing.getCoordinates() == null || humanBeing.getCoordinates().getX() == null) {
             return; 
@@ -276,6 +274,7 @@ public class HumanBeingService {
         }
         
         if (shouldCheck) {
+            // проверка зерез запрос 
             Optional<HumanBeing> existing = humanBeingDao.findByCoordinates(
                 humanBeing.getCoordinates().getX(),
                 humanBeing.getCoordinates().getY(),
@@ -290,7 +289,7 @@ public class HumanBeingService {
             }
         }
     }
-
+// на машин ган Ю20
     private void validateMachineGunRule(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
         if (humanBeing.getWeaponType() != WeaponType.MACHINE_GUN) {
             return;
@@ -408,174 +407,4 @@ public class HumanBeingService {
         }
     }
 
-    @TransactionAttribute(TransactionAttributeType.REQUIRED)
-    public ImportResult importHumanBeings(List<HumanBeingDto> humanBeingDtos) {
-        LOGGER.log(Level.INFO, "Starting import of {0} HumanBeings", humanBeingDtos.size());
-        
-        List<String> errors = new ArrayList<>();
-        int successfullyImported = 0;
-        int failed = 0;
-        
-        try {
-            for (int i = 0; i < humanBeingDtos.size(); i++) {
-                HumanBeingDto dto = humanBeingDtos.get(i);
-                try {
-                    validateImportData(dto, i + 1);
-                } catch (ValidationException e) {
-                    errors.add("Row " + (i + 1) + ": " + e.getMessage());
-                    failed++;
-                }
-            }
-            
-            if (!errors.isEmpty()) {
-                sessionContext.setRollbackOnly();
-                return ImportResult.failure("Validation failed - no objects imported", humanBeingDtos.size(), 
-                                          0, failed, errors);
-            }
-
-            List<HumanBeing> entitiesToCreate = new ArrayList<>();
-
-            for (int i = 0; i < humanBeingDtos.size(); i++) {
-                HumanBeingDto dto = humanBeingDtos.get(i);
-                HumanBeing humanBeing = mapper.toEntity(dto);
-
-                if (humanBeing.getCreationDate() == null) {
-                    humanBeing.setCreationDate(new java.util.Date());
-                }
-
-                applyMachineGunDefault(humanBeing);
-
-                if (humanBeing.getCar() != null && humanBeing.getCar().getId() == null) {
-                    Car savedCar = carDao.create(humanBeing.getCar());
-                    humanBeing.setCar(savedCar);
-                }
-                
-                entitiesToCreate.add(humanBeing);
-            }
-
-            for (int i = 0; i < entitiesToCreate.size(); i++) {
-                HumanBeing current = entitiesToCreate.get(i);
-                if (current.getCoordinates() != null && current.getCoordinates().getX() != null) {
-                    for (int j = i + 1; j < entitiesToCreate.size(); j++) {
-                        HumanBeing other = entitiesToCreate.get(j);
-                        if (other.getCoordinates() != null && other.getCoordinates().getX() != null) {
-                            if (current.getCoordinates().getX().equals(other.getCoordinates().getX()) &&
-                                current.getCoordinates().getY() == other.getCoordinates().getY()) {
-                                throw new ValidationException(
-                                    "Row " + (i + 1) + " and Row " + (j + 1) + 
-                                    " have duplicate coordinates (" + 
-                                    current.getCoordinates().getX() + ", " + 
-                                    current.getCoordinates().getY() + ")"
-                                );
-                            }
-                        }
-                    }
-                }
-
-                if (current.getCoordinates() != null && current.getCoordinates().getX() != null) {
-                    Optional<HumanBeing> existing = humanBeingDao.findByCoordinates(
-                        current.getCoordinates().getX(),
-                        current.getCoordinates().getY(),
-                        null
-                    );
-                    if (existing.isPresent()) {
-                        throw new ValidationException(
-                            "Row " + (i + 1) + ": HumanBeing with coordinates (" + 
-                            current.getCoordinates().getX() + ", " + 
-                            current.getCoordinates().getY() + ") already exists in database"
-                        );
-                    }
-                }
-            }
-
-            for (HumanBeing entity : entitiesToCreate) {
-                humanBeingDao.create(entity);
-                successfullyImported++;
-            }
-            
-            LOGGER.log(Level.INFO, "Import completed successfully: {0} objects imported", successfullyImported);
-            
-            return ImportResult.success(humanBeingDtos.size(), successfullyImported);
-            
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Import failed with exception - all changes rolled back", e);
-            sessionContext.setRollbackOnly(); 
-            return ImportResult.failure("Import failed - no objects imported: " + e.getMessage(), 
-                                      humanBeingDtos.size(), 0, humanBeingDtos.size(), errors);
-        }
-    }
-    
-    private void validateImportData(HumanBeingDto dto, int rowNumber) throws ValidationException {
-        StringBuilder errors = new StringBuilder();
-        
-        if (dto.getName() == null || dto.getName().trim().isEmpty()) {
-            errors.append("Name is required; ");
-        }
-        
-        if (dto.getCoordinates() == null) {
-            errors.append("Coordinates are required; ");
-        } else {
-            if (dto.getCoordinates().getX() == null) {
-                errors.append("Coordinates X is required; ");
-            }
-        }
-        
-        if (dto.getCar() == null) {
-            errors.append("Car is required; ");
-        } else {
-            if (dto.getCar().getName() == null || dto.getCar().getName().trim().isEmpty()) {
-                errors.append("Car name is required; ");
-            }
-        }
-        
-    
-        if (dto.getMood() == null || dto.getMood().trim().isEmpty()) {
-            errors.append("Mood is required; ");
-        } else {
-            try {
-                Mood.valueOf(dto.getMood().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                errors.append("Invalid mood value. Must be one of: SORROW, LONGING, GLOOM, APATHY, FRENZY; ");
-            }
-        }
-        
-        WeaponType weaponType = null;
-        if (dto.getWeaponType() == null || dto.getWeaponType().trim().isEmpty()) {
-            errors.append("Weapon type is required; ");
-        } else {
-            try {
-                weaponType = WeaponType.valueOf(dto.getWeaponType().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                errors.append("Invalid weapon type value; ");
-            }
-        }
-
-        if (weaponType == WeaponType.MACHINE_GUN && dto.getImpactSpeed() < 20) {
-            errors.append("MACHINE_GUN requires impactSpeed >= 20 (current: " + dto.getImpactSpeed() + "); ");
-        }
-        
-        if (dto.getSoundtrackName() == null || dto.getSoundtrackName().trim().isEmpty()) {
-            errors.append("Soundtrack name is required; ");
-        }
-        
-        if (dto.getMinutesOfWaiting() == null) {
-            errors.append("Minutes of waiting is required; ");
-        }
-
-        if (dto.getName() != null && dto.getName().length() > 100) {
-            errors.append("Name must be 100 characters or less; ");
-        }
-        
-        if (dto.getSoundtrackName() != null && dto.getSoundtrackName().length() > 100) {
-            errors.append("Soundtrack name must be 100 characters or less; ");
-        }
-        
-        if (dto.getCar() != null && dto.getCar().getName() != null && dto.getCar().getName().length() > 50) {
-            errors.append("Car name must be 50 characters or less; ");
-        }
-        
-        if (!errors.toString().isEmpty()) {
-            throw new ValidationException(errors.toString());
-        }
-    }
 }
