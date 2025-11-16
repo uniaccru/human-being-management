@@ -2,7 +2,6 @@ package com.humanbeingmanager.rest;
 
 import com.humanbeingmanager.dto.*;
 import com.humanbeingmanager.service.ImportService;
-import com.humanbeingmanager.service.ImportResult;
 import com.humanbeingmanager.dao.ImportHistoryDao;
 import com.humanbeingmanager.entity.ImportHistory;
 import jakarta.enterprise.context.RequestScoped;
@@ -43,7 +42,7 @@ public class ImportResource {
                               .build();
             }
 
-            ImportResult result = importService.importHumanBeings(humanBeings);
+            ImportResultDto result = importService.importHumanBeings(humanBeings);
 
             String username = System.getProperty("user.name", "Unknown");
             String status = result.isSuccess() ? "SUCCESS" : "FAILED";

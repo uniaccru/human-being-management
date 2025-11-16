@@ -3,7 +3,7 @@ package com.humanbeingmanager.rest;
 import com.humanbeingmanager.dto.*;
 import com.humanbeingmanager.entity.HumanBeing;
 import com.humanbeingmanager.mapper.EntityDtoMapper;
-import com.humanbeingmanager.service.HumanBeingService;
+import com.humanbeingmanager.service.SpecialOperationsService;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.ejb.EJB;
 import jakarta.inject.Inject;
@@ -25,7 +25,7 @@ public class SpecialOperationsResource {
     private static final Logger LOGGER = Logger.getLogger(SpecialOperationsResource.class.getName());
 
     @EJB
-    private HumanBeingService humanBeingService;
+    private SpecialOperationsService specialOperationsService;
 
     @Inject
     private EntityDtoMapper mapper;
@@ -35,7 +35,7 @@ public class SpecialOperationsResource {
     public Response getSumOfMinutesWaiting() {
         try {
             LOGGER.info("GET /api/special-operations/sum-minutes-waiting");
-            Long sum = humanBeingService.getSumOfMinutesWaiting();
+            Long sum = specialOperationsService.getSumOfMinutesWaiting();
             return Response.ok(new java.util.HashMap<String, Long>() {{ put("sum", sum); }}).build();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error calculating sum of minutes waiting", e);
@@ -50,7 +50,7 @@ public class SpecialOperationsResource {
     public Response getMaxToothpick() {
         try {
             LOGGER.info("GET /api/special-operations/max-toothpick");
-            HumanBeing humanBeing = humanBeingService.getMaxToothpick();
+            HumanBeing humanBeing = specialOperationsService.getMaxToothpick();
             return Response.ok(mapper.toDto(humanBeing)).build();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error getting max toothpick", e);
@@ -70,7 +70,7 @@ public class SpecialOperationsResource {
                               .entity(ApiResponseDto.error("Substring parameter is required"))
                               .build();
             }
-            List<HumanBeing> humanBeings = humanBeingService.getSoundtrackStartsWith(substring);
+            List<HumanBeing> humanBeings = specialOperationsService.getSoundtrackStartsWith(substring);
             List<HumanBeingDto> humanBeingDtos = humanBeings.stream()
                     .map(mapper::toDto)
                     .collect(Collectors.toList());
@@ -88,7 +88,7 @@ public class SpecialOperationsResource {
     public Response deleteHeroesWithoutToothpicks() {
         try {
             LOGGER.info("DELETE /api/special-operations/delete-heroes-without-toothpicks");
-            int deletedCount = humanBeingService.deleteHeroesWithoutToothpicks();
+            int deletedCount = specialOperationsService.deleteHeroesWithoutToothpicks();
             return Response.ok(deletedCount).build();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error deleting heroes without toothpicks", e);
@@ -103,7 +103,7 @@ public class SpecialOperationsResource {
     public Response setAllMoodToSadness() {
         try {
             LOGGER.info("PUT /api/special-operations/set-all-mood-sadness");
-            int updatedCount = humanBeingService.setAllMoodToSadness();
+            int updatedCount = specialOperationsService.setAllMoodToSadness();
             return Response.ok(updatedCount).build();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error setting all mood to sadness", e);

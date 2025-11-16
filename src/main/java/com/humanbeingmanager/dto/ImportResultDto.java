@@ -1,8 +1,8 @@
-package com.humanbeingmanager.service;
+package com.humanbeingmanager.dto;
 
 import java.util.List;
 
-public class ImportResult {
+public class ImportResultDto {
     private boolean success;
     private String errorMessage;
     private int totalProcessed;
@@ -10,9 +10,9 @@ public class ImportResult {
     private int failed;
     private List<String> errors;
 
-    public ImportResult() {}
+    public ImportResultDto() {}
 
-    public ImportResult(boolean success, String errorMessage, int totalProcessed, 
+    public ImportResultDto(boolean success, String errorMessage, int totalProcessed, 
                        int successfullyImported, int failed, List<String> errors) {
         this.success = success;
         this.errorMessage = errorMessage;
@@ -22,13 +22,13 @@ public class ImportResult {
         this.errors = errors;
     }
 
-    public static ImportResult success(int totalProcessed, int successfullyImported) {
-        return new ImportResult(true, null, totalProcessed, successfullyImported, 0, null);
+    public static ImportResultDto success(int totalProcessed, int successfullyImported) {
+        return new ImportResultDto(true, null, totalProcessed, successfullyImported, 0, null);
     }
 
-    public static ImportResult failure(String errorMessage, int totalProcessed, 
+    public static ImportResultDto failure(String errorMessage, int totalProcessed,
                                      int successfullyImported, int failed, List<String> errors) {
-        return new ImportResult(false, errorMessage, totalProcessed, successfullyImported, failed, errors);
+        return new ImportResultDto(false, errorMessage, totalProcessed, successfullyImported, failed, errors);
     }
 
     public boolean isSuccess() {
@@ -79,5 +79,4 @@ public class ImportResult {
         this.errors = errors;
     }
 }
-
 

@@ -7,7 +7,9 @@ import com.humanbeingmanager.entity.Car;
 import com.humanbeingmanager.entity.Mood;
 import com.humanbeingmanager.entity.WeaponType;
 import com.humanbeingmanager.dto.HumanBeingDto;
+import com.humanbeingmanager.dto.ImportResultDto;
 import com.humanbeingmanager.mapper.EntityDtoMapper;
+import com.humanbeingmanager.validator.BusinessRulesValidator;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;
@@ -36,11 +38,14 @@ public class ImportService {
     @Inject
     private EntityDtoMapper mapper;
 
+    @Inject
+    private BusinessRulesValidator businessRulesValidator;
+
     @Resource
     private SessionContext sessionContext;
 
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
-    public ImportResult importHumanBeings(List<HumanBeingDto> humanBeingDtos) {
+    public ImportResultDto importHumanBeings(List<HumanBeingDto> humanBeingDtos) {
         LOGGER.log(Level.INFO, "Starting import of {0} HumanBeings", humanBeingDtos.size());
         
         List<String> errors = new ArrayList<>();
@@ -60,7 +65,7 @@ public class ImportService {
             
             if (!errors.isEmpty()) {
                 sessionContext.setRollbackOnly();
-                return ImportResult.failure("Validation failed - no objects imported", humanBeingDtos.size(), 
+                return ImportResultDto.failure("Validation failed - no objects imported", humanBeingDtos.size(), 
                                           0, failed, errors);
             }
 
@@ -74,7 +79,7 @@ public class ImportService {
                     humanBeing.setCreationDate(new java.util.Date());
                 }
 
-                applyMachineGunDefault(humanBeing);
+                businessRulesValidator.applyMachineGunDefault(humanBeing);
 
                 if (humanBeing.getCar() != null && humanBeing.getCar().getId() == null) {
                     Car savedCar = carDao.create(humanBeing.getCar());
@@ -126,12 +131,12 @@ public class ImportService {
             
             LOGGER.log(Level.INFO, "Import completed successfully: {0} objects imported", successfullyImported);
             
-            return ImportResult.success(humanBeingDtos.size(), successfullyImported);
+            return ImportResultDto.success(humanBeingDtos.size(), successfullyImported);
             
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Import failed with exception - all changes rolled back", e);
             sessionContext.setRollbackOnly(); 
-            return ImportResult.failure("Import failed - no objects imported: " + e.getMessage(), 
+            return ImportResultDto.failure("Import failed - no objects imported: " + e.getMessage(), 
                                       humanBeingDtos.size(), 0, humanBeingDtos.size(), errors);
         }
     }
@@ -181,8 +186,9 @@ public class ImportService {
             }
         }
 
-        if (weaponType == WeaponType.MACHINE_GUN && dto.getImpactSpeed() < 20) {
-            errors.append("MACHINE_GUN requires impactSpeed >= 20 (current: " + dto.getImpactSpeed() + "); ");
+        // Используем валидатор для проверки правила MACHINE_GUN
+        if (weaponType != null) {
+            businessRulesValidator.validateMachineGunRule(weaponType, dto.getImpactSpeed(), errors);
         }
         
         if (dto.getSoundtrackName() == null || dto.getSoundtrackName().trim().isEmpty()) {
@@ -193,16 +199,14 @@ public class ImportService {
             errors.append("Minutes of waiting is required; ");
         }
 
-        if (dto.getName() != null && dto.getName().length() > 100) {
-            errors.append("Name must be 100 characters or less; ");
-        }
+        // Используем валидатор для общих правил валидации
+        businessRulesValidator.validateName(dto.getName(), errors);
+        businessRulesValidator.validateSoundtrackName(dto.getSoundtrackName(), errors);
+        businessRulesValidator.validateCar(dto.getCar(), errors);
+        businessRulesValidator.validateMinutesOfWaiting(dto.getMinutesOfWaiting(), errors);
         
-        if (dto.getSoundtrackName() != null && dto.getSoundtrackName().length() > 100) {
-            errors.append("Soundtrack name must be 100 characters or less; ");
-        }
-        
-        if (dto.getCar() != null && dto.getCar().getName() != null && dto.getCar().getName().length() > 50) {
-            errors.append("Car name must be 50 characters or less; ");
+        if (dto.getCoordinates() != null) {
+            businessRulesValidator.validateCoordinates(dto.getCoordinates(), errors);
         }
         
         if (!errors.toString().isEmpty()) {
@@ -210,12 +214,6 @@ public class ImportService {
         }
     }
 
-    private void applyMachineGunDefault(HumanBeing humanBeing) {
-        if (humanBeing.getWeaponType() == WeaponType.MACHINE_GUN && humanBeing.getImpactSpeed() == 0) {
-            humanBeing.setImpactSpeed(20.0f);
-            LOGGER.log(Level.INFO, "Applied default impactSpeed=20 for MACHINE_GUN");
-        }
-    }
 
     public static class ValidationException extends Exception {
         public ValidationException(String message) {

@@ -123,6 +123,7 @@ public class HumanBeingDao {
         return query.getResultList();
     }
 
+    // проверка через запрос
     public Optional<HumanBeing> findByCoordinates(Integer x, double y, Long excludeId) {
         StringBuilder jpql = new StringBuilder(
             "SELECT h FROM HumanBeing h WHERE h.coordinates.x = :x AND h.coordinates.y = :y");

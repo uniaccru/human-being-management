@@ -12,7 +12,7 @@
       "cool": true
     },
     "mood": "RAGE",
-    "impactSpeed": 100.5,
+    "impactSpeed": 90.5,
     "soundtrackName": "Epic Soundtrack",
     "minutesOfWaiting": 45,
     "weaponType": "SHOTGUN"
@@ -30,7 +30,7 @@
       "cool": false
     },
     "mood": "CALM",
-    "impactSpeed": 150.25,
+    "impactSpeed": 190.25,
     "soundtrackName": "Action Theme",
     "minutesOfWaiting": 60,
     "weaponType": "AXE"

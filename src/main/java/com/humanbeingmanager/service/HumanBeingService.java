@@ -10,6 +10,7 @@ import com.humanbeingmanager.entity.WeaponType;
 import com.humanbeingmanager.dto.CarDto;
 import com.humanbeingmanager.dto.CoordinatesDto;
 import com.humanbeingmanager.mapper.EntityDtoMapper;
+import com.humanbeingmanager.validator.BusinessRulesValidator;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;
@@ -43,6 +44,9 @@ public class HumanBeingService {
     @Inject
     private EntityDtoMapper mapper;
 
+    @Inject
+    private BusinessRulesValidator businessRulesValidator;
+
     @Resource
     private SessionContext sessionContext;
 
@@ -55,7 +59,7 @@ public class HumanBeingService {
                 humanBeing.setCreationDate(new java.util.Date());
             }
 
-            applyMachineGunDefault(humanBeing);
+            businessRulesValidator.applyMachineGunDefault(humanBeing);
             
             validateHumanBeing(humanBeing);
             validateBusinessRules(humanBeing, false, null);
@@ -99,7 +103,7 @@ public class HumanBeingService {
                 humanBeing.setCreationDate(existing.getCreationDate());
             }
 
-            applyMachineGunDefault(humanBeing);
+            businessRulesValidator.applyMachineGunDefault(humanBeing);
             
             validateHumanBeing(humanBeing);
             validateBusinessRules(humanBeing, true, humanBeing.getId());
@@ -191,46 +195,6 @@ public class HumanBeingService {
         return carDao.findAll();
     }
 
-    //s(v)o
-
-    public Long getSumOfMinutesWaiting() {
-        LOGGER.log(Level.INFO, "Calculating sum of minutes waiting");
-        return humanBeingDao.getSumOfMinutesWaiting();
-    }
-
-    public HumanBeing getMaxToothpick() {
-        LOGGER.log(Level.INFO, "Getting HumanBeing with max toothpick value");
-        return humanBeingDao.getMaxToothpick();
-    }
-
-    public List<HumanBeing> getSoundtrackStartsWith(String substring) {
-        LOGGER.log(Level.INFO, "Getting HumanBeings with soundtrack starting with: {0}", substring);
-        return humanBeingDao.getSoundtrackStartsWith(substring);
-    }
-
-    @TransactionAttribute(TransactionAttributeType.REQUIRED)
-    public int deleteHeroesWithoutToothpicks() {
-        LOGGER.log(Level.INFO, "Deleting all heroes without toothpicks");
-        try {
-            return humanBeingDao.deleteHeroesWithoutToothpicks();
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error deleting heroes without toothpicks", e);
-            sessionContext.setRollbackOnly(); 
-            throw new RuntimeException("Failed to delete heroes without toothpicks: " + e.getMessage(), e);
-        }
-    }
-
-    @TransactionAttribute(TransactionAttributeType.REQUIRED)
-    public int setAllMoodToSadness() {
-        LOGGER.log(Level.INFO, "Setting all heroes mood to SADNESS");
-        try {
-            return humanBeingDao.setAllMoodToSadness();
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error setting all mood to sadness", e);
-            sessionContext.setRollbackOnly(); 
-            throw new RuntimeException("Failed to set all mood to sadness: " + e.getMessage(), e);
-        }
-    }
 
 
     private void validateHumanBeing(HumanBeing humanBeing) throws ValidationException {
@@ -245,12 +209,6 @@ public class HumanBeingService {
         }
     }
 
-    private void applyMachineGunDefault(HumanBeing humanBeing) {
-        if (humanBeing.getWeaponType() == WeaponType.MACHINE_GUN && humanBeing.getImpactSpeed() == 0) {
-            humanBeing.setImpactSpeed(20.0f);
-            LOGGER.log(Level.INFO, "Applied default impactSpeed=20 for MACHINE_GUN");
-        }
-    }
 
     // ограничения на уникальность координат
     private void validateUniqueCoordinates(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
@@ -307,9 +265,8 @@ public class HumanBeingService {
             }
         }
         
-        if (shouldCheck && humanBeing.getImpactSpeed() < 20) {
-            errors.append("MACHINE_GUN requires impactSpeed >= 20 (current: " + 
-                humanBeing.getImpactSpeed() + "); ");
+        if (shouldCheck) {
+            businessRulesValidator.validateMachineGunRule(humanBeing, errors);
         }
     }
 
@@ -318,77 +275,10 @@ public class HumanBeingService {
         StringBuilder errors = new StringBuilder();
         
         validateUniqueCoordinates(humanBeing, isUpdate, excludeId, errors);
-
         validateMachineGunRule(humanBeing, isUpdate, excludeId, errors);
         
-        if (humanBeing.getName() != null) {
-            String name = humanBeing.getName().trim();
-            if (name.length() > 100) {
-                errors.append("Name must be 100 characters or less; ");
-            }
-            if (!name.matches("^[a-zA-Z0-9\\s\\-_.]+$")) {
-                errors.append("Name can only contain letters, numbers, spaces, hyphens, underscores, and periods; ");
-            }
-        }
-
-        if (humanBeing.getCoordinates() != null) {
-            Coordinates coords = humanBeing.getCoordinates();
-            
-            if (coords.getX() != null) {
-                if (coords.getX() < -1000 || coords.getX() > 1000) {
-                    errors.append("X coordinate must be between -1000 and 1000; ");
-                }
-                if (coords.getX() == 0) {
-                    errors.append("X coordinate cannot be zero; ");
-                }
-            }
-            
-            if (coords.getY() <= -1000) {
-                errors.append("Y coordinate must be greater than -1000; ");
-            }
-            if (coords.getY() > 1000) {
-                errors.append("Y coordinate must be at most 1000; ");
-            }
-            if (coords.getY() == 0) {
-                errors.append("Y coordinate cannot be zero; ");
-            }
-        }
-
-        if (humanBeing.isRealHero() && humanBeing.getImpactSpeed() < 0) {
-            errors.append("Real heroes cannot have negative impact speed; ");
-        }
-        if (humanBeing.getImpactSpeed() < -1000 || humanBeing.getImpactSpeed() > 1000) {
-            errors.append("Impact speed must be between -1000 and 1000; ");
-        }
-
-        if (humanBeing.getMinutesOfWaiting() != null) {
-            if (humanBeing.getMinutesOfWaiting() < 0) {
-                errors.append("Minutes of waiting cannot be negative; ");
-            }
-            if (humanBeing.getMinutesOfWaiting() > 99999) {
-                errors.append("Minutes of waiting must be less than 100,000; ");
-            }
-        }
-
-        if (humanBeing.getSoundtrackName() != null) {
-            String soundtrack = humanBeing.getSoundtrackName().trim();
-            if (soundtrack.length() > 100) {
-                errors.append("Soundtrack name must be 100 characters or less; ");
-            }
-            if (!soundtrack.matches("^[a-zA-Z0-9\\s\\-_.]+$")) {
-                errors.append("Soundtrack name can only contain letters, numbers, spaces, hyphens, underscores, and periods; ");
-            }
-        }
-
-        if (humanBeing.getCar() != null) {
-            Car car = humanBeing.getCar();
-            if (car.getName() != null && car.getName().length() > 50) {
-                errors.append("Car name must be 50 characters or less; ");
-            }
-            if (car.getName() != null && !car.getName().matches("^[a-zA-Z0-9\\s\\-_.]*$")) {
-                errors.append("Car name can only contain letters, numbers, spaces, hyphens, underscores, and periods; ");
-            }
-        }
+        // Используем валидатор для общих бизнес-правил
+        businessRulesValidator.validateBusinessRules(humanBeing, errors);
 
         if (errors.length() > 0) {
             throw new ValidationException(errors.toString());
