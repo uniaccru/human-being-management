@@ -174,31 +174,24 @@ public class HumanBeingDao {
         return query.getResultList();
     }
 
-    public int deleteHeroesWithoutToothpicks() {
+    /**
+     * Находит всех героев без зубочисток
+     * @return список HumanBeing, которые являются героями и не имеют зубочистки
+     */
+    public List<HumanBeing> findHeroesWithoutToothpicks() {
         TypedQuery<HumanBeing> query = entityManager.createQuery(
             "SELECT h FROM HumanBeing h WHERE h.realHero = true AND (h.hasToothpick = false OR h.hasToothpick IS NULL)", 
             HumanBeing.class);
-        List<HumanBeing> toDelete = query.getResultList();
-        
-        for (HumanBeing humanBeing : toDelete) {
-            entityManager.remove(humanBeing);
-        }
-        
-        return toDelete.size();
+        return query.getResultList();
     }
 
-    public int setAllMoodToSadness() {
-        TypedQuery<HumanBeing> selectQuery = entityManager.createQuery(
+    /**
+     * Находит всех реальных героев
+     * @return список HumanBeing, которые являются реальными героями
+     */
+    public List<HumanBeing> findAllRealHeroes() {
+        TypedQuery<HumanBeing> query = entityManager.createQuery(
             "SELECT h FROM HumanBeing h WHERE h.realHero = true", HumanBeing.class);
-        List<HumanBeing> heroes = selectQuery.getResultList();
-
-        int updatedCount = 0;
-        for (HumanBeing hero : heroes) {
-            hero.setMood(com.humanbeingmanager.entity.Mood.SADNESS);
-            entityManager.merge(hero);
-            updatedCount++;
-        }
-        
-        return updatedCount;
+        return query.getResultList();
     }
 }
