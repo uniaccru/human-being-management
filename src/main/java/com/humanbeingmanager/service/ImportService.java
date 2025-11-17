@@ -19,7 +19,6 @@ import jakarta.inject.Inject;
 import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -89,36 +88,24 @@ public class ImportService {
                 entitiesToCreate.add(humanBeing);
             }
 
+            // Validate unique coordinates within import list and in database
             for (int i = 0; i < entitiesToCreate.size(); i++) {
                 HumanBeing current = entitiesToCreate.get(i);
-                if (current.getCoordinates() != null && current.getCoordinates().getX() != null) {
-                    for (int j = i + 1; j < entitiesToCreate.size(); j++) {
-                        HumanBeing other = entitiesToCreate.get(j);
-                        if (other.getCoordinates() != null && other.getCoordinates().getX() != null) {
-                            if (current.getCoordinates().getX().equals(other.getCoordinates().getX()) &&
-                                current.getCoordinates().getY() == other.getCoordinates().getY()) {
-                                throw new ValidationException(
-                                    "Row " + (i + 1) + " and Row " + (j + 1) + 
-                                    " have duplicate coordinates (" + 
-                                    current.getCoordinates().getX() + ", " + 
-                                    current.getCoordinates().getY() + ")"
-                                );
-                            }
-                        }
-                    }
+                int rowNumber = i + 1;
+                
+                // Check for duplicates within the import list
+                String duplicateError = businessRulesValidator.validateUniqueCoordinatesInImportList(
+                    entitiesToCreate, rowNumber
+                );
+                if (duplicateError != null) {
+                    throw new ValidationException(duplicateError);
                 }
-
-                if (current.getCoordinates() != null && current.getCoordinates().getX() != null) {
-                    if (businessRulesValidator.coordinatesExist(
-                        current.getCoordinates().getX(),
-                        current.getCoordinates().getY()
-                    )) {
-                        throw new ValidationException(
-                            "Row " + (i + 1) + ": HumanBeing with coordinates (" + 
-                            current.getCoordinates().getX() + ", " + 
-                            current.getCoordinates().getY() + ") already exists in database"
-                        );
-                    }
+                
+                // Check if coordinates already exist in database using existing validator
+                StringBuilder coordinateErrors = new StringBuilder();
+                businessRulesValidator.validateUniqueCoordinates(current, false, null, coordinateErrors);
+                if (coordinateErrors.length() > 0) {
+                    throw new ValidationException("Row " + rowNumber + ": " + coordinateErrors.toString().trim());
                 }
             }
 

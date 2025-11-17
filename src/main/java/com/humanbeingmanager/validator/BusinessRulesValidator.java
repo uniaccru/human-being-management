@@ -9,6 +9,7 @@ import com.humanbeingmanager.dto.CoordinatesDto;
 import com.humanbeingmanager.dto.CarDto;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ejb.EJB;
+import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.logging.Level;
@@ -68,7 +69,9 @@ public class BusinessRulesValidator {
         }
     }
 
-    /
+    /**
+     * Validates name according to business rules.
+     */
     public void validateName(String name, StringBuilder errors) {
         if (name != null) {
             String trimmed = name.trim();
@@ -249,5 +252,35 @@ public class BusinessRulesValidator {
         validateCar(humanBeing.getCar(), errors);
         validateMachineGunRule(humanBeing, errors);
     }
+
+    /**
+     * Validates that coordinates are unique within the import list.
+     * Checks for duplicate coordinates between different HumanBeing objects in the list.
+     * 
+     * @param humanBeings List of HumanBeing entities to check for duplicates
+     * @param rowNumber Current row number (1-based) for error reporting
+     * @return Error message if duplicate found, null otherwise
+     */
+    public String validateUniqueCoordinatesInImportList(List<HumanBeing> humanBeings, int rowNumber) {
+        HumanBeing current = humanBeings.get(rowNumber - 1);
+        if (current.getCoordinates() == null || current.getCoordinates().getX() == null) {
+            return null;
+        }
+
+        for (int j = rowNumber; j < humanBeings.size(); j++) {
+            HumanBeing other = humanBeings.get(j);
+            if (other.getCoordinates() != null && other.getCoordinates().getX() != null) {
+                if (current.getCoordinates().getX().equals(other.getCoordinates().getX()) &&
+                    current.getCoordinates().getY() == other.getCoordinates().getY()) {
+                    return "Row " + rowNumber + " and Row " + (j + 1) + 
+                           " have duplicate coordinates (" + 
+                           current.getCoordinates().getX() + ", " + 
+                           current.getCoordinates().getY() + ")";
+                }
+            }
+        }
+        return null;
+    }
+
 }
 
