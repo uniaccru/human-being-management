@@ -21,9 +21,7 @@ public class BusinessRulesValidator {
     @EJB
     private HumanBeingDao humanBeingDao;
 
-    /**
-     * Применяет дефолтное значение для MACHINE_GUN, если impactSpeed равен 0
-     */
+
     public void applyMachineGunDefault(HumanBeing humanBeing) {
         if (humanBeing.getWeaponType() == WeaponType.MACHINE_GUN && humanBeing.getImpactSpeed() == 0) {
             humanBeing.setImpactSpeed(20.0f);
@@ -31,11 +29,6 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует правило для MACHINE_GUN: impactSpeed должен быть >= 20
-     * @param humanBeing сущность для валидации
-     * @param errors StringBuilder для накопления ошибок
-     */
     public void validateMachineGunRule(HumanBeing humanBeing, StringBuilder errors) {
         if (humanBeing.getWeaponType() == WeaponType.MACHINE_GUN && humanBeing.getImpactSpeed() < 20) {
             errors.append("MACHINE_GUN requires impactSpeed >= 20 (current: ")
@@ -43,13 +36,7 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует правило для MACHINE_GUN с учетом обновления (проверяет, изменилось ли значение)
-     * @param humanBeing сущность для валидации
-     * @param isUpdate флаг, указывающий, является ли это обновлением
-     * @param excludeId ID существующей сущности (для обновления)
-     * @param errors StringBuilder для накопления ошибок
-     */
+    
     public void validateMachineGunRule(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
         if (humanBeing.getWeaponType() != WeaponType.MACHINE_GUN) {
             return;
@@ -73,12 +60,7 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует правило для MACHINE_GUN на основе DTO данных
-     * @param weaponType тип оружия
-     * @param impactSpeed скорость удара
-     * @param errors StringBuilder для накопления ошибок
-     */
+    
     public void validateMachineGunRule(WeaponType weaponType, float impactSpeed, StringBuilder errors) {
         if (weaponType == WeaponType.MACHINE_GUN && impactSpeed < 20) {
             errors.append("MACHINE_GUN requires impactSpeed >= 20 (current: ")
@@ -86,9 +68,7 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует имя HumanBeing
-     */
+    /
     public void validateName(String name, StringBuilder errors) {
         if (name != null) {
             String trimmed = name.trim();
@@ -101,9 +81,7 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует координаты
-     */
+    
     public void validateCoordinates(Coordinates coordinates, StringBuilder errors) {
         if (coordinates != null) {
             if (coordinates.getX() != null) {
@@ -127,9 +105,7 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует координаты из DTO
-     */
+    
     public void validateCoordinates(CoordinatesDto coordinates, StringBuilder errors) {
         if (coordinates != null) {
             if (coordinates.getX() != null) {
@@ -153,9 +129,7 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует impactSpeed
-     */
+    
     public void validateImpactSpeed(HumanBeing humanBeing, StringBuilder errors) {
         if (humanBeing.isRealHero() && humanBeing.getImpactSpeed() < 0) {
             errors.append("Real heroes cannot have negative impact speed; ");
@@ -165,9 +139,7 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует minutesOfWaiting
-     */
+    
     public void validateMinutesOfWaiting(Long minutesOfWaiting, StringBuilder errors) {
         if (minutesOfWaiting != null) {
             if (minutesOfWaiting < 0) {
@@ -179,9 +151,7 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует soundtrackName
-     */
+    
     public void validateSoundtrackName(String soundtrackName, StringBuilder errors) {
         if (soundtrackName != null) {
             String trimmed = soundtrackName.trim();
@@ -194,9 +164,7 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует Car
-     */
+    
     public void validateCar(Car car, StringBuilder errors) {
         if (car != null) {
             if (car.getName() != null) {
@@ -210,9 +178,6 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует Car из DTO
-     */
     public void validateCar(CarDto car, StringBuilder errors) {
         if (car != null) {
             if (car.getName() != null) {
@@ -226,12 +191,7 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Проверяет, существуют ли координаты в базе данных
-     * @param x координата X
-     * @param y координата Y
-     * @return true, если координаты уже существуют в базе
-     */
+
     public boolean coordinatesExist(Integer x, double y) {
         if (x == null) {
             return false;
@@ -240,13 +200,7 @@ public class BusinessRulesValidator {
         return existing.isPresent();
     }
 
-    /**
-     * Валидирует уникальность координат
-     * @param humanBeing сущность для валидации
-     * @param isUpdate флаг, указывающий, является ли это обновлением
-     * @param excludeId ID существующей сущности (для обновления, чтобы исключить её из проверки)
-     * @param errors StringBuilder для накопления ошибок
-     */
+    
     public void validateUniqueCoordinates(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
         if (humanBeing.getCoordinates() == null || humanBeing.getCoordinates().getX() == null) {
             return; 
@@ -286,9 +240,6 @@ public class BusinessRulesValidator {
         }
     }
 
-    /**
-     * Валидирует все бизнес-правила для HumanBeing (кроме уникальности координат, которая требует DAO)
-     */
     public void validateBusinessRules(HumanBeing humanBeing, StringBuilder errors) {
         validateName(humanBeing.getName(), errors);
         validateCoordinates(humanBeing.getCoordinates(), errors);

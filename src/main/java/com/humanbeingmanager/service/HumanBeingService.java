@@ -213,13 +213,10 @@ public class HumanBeingService {
     private void validateBusinessRules(HumanBeing humanBeing, boolean isUpdate, Long excludeId) throws ValidationException {
         StringBuilder errors = new StringBuilder();
         
-        // Используем валидатор для проверки уникальности координат
         businessRulesValidator.validateUniqueCoordinates(humanBeing, isUpdate, excludeId, errors);
-        
-        // Используем валидатор для проверки правила MACHINE_GUN с учетом обновления
+
         businessRulesValidator.validateMachineGunRule(humanBeing, isUpdate, excludeId, errors);
         
-        // Используем валидатор для общих бизнес-правил
         businessRulesValidator.validateBusinessRules(humanBeing, errors);
 
         if (errors.length() > 0) {

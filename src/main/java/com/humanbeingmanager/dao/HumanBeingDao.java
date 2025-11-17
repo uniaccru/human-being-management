@@ -36,7 +36,6 @@ public class HumanBeingDao {
         return query.getResultList();
     }
 
-    //filtering
     public List<HumanBeing> findAll(int page, int size, String filterColumn, String filterValue, String sortColumn, String sortDirection) {
         StringBuilder queryBuilder = new StringBuilder("SELECT h FROM HumanBeing h");
         
@@ -44,7 +43,6 @@ public class HumanBeingDao {
             queryBuilder.append(" WHERE h.").append(filterColumn).append(" = :filterValue");
         }
         
-        //sorting
         if (sortColumn != null && !sortColumn.trim().isEmpty()) {
             queryBuilder.append(" ORDER BY h.").append(sortColumn);
             if ("desc".equalsIgnoreCase(sortDirection)) {
@@ -150,7 +148,6 @@ public class HumanBeingDao {
         entityManager.refresh(humanBeing);
     }
 
-    //special Operations
 
     public Long getSumOfMinutesWaiting() {
         TypedQuery<Long> query = entityManager.createQuery(
@@ -174,10 +171,6 @@ public class HumanBeingDao {
         return query.getResultList();
     }
 
-    /**
-     * Находит всех героев без зубочисток
-     * @return список HumanBeing, которые являются героями и не имеют зубочистки
-     */
     public List<HumanBeing> findHeroesWithoutToothpicks() {
         TypedQuery<HumanBeing> query = entityManager.createQuery(
             "SELECT h FROM HumanBeing h WHERE h.realHero = true AND (h.hasToothpick = false OR h.hasToothpick IS NULL)", 
@@ -185,10 +178,6 @@ public class HumanBeingDao {
         return query.getResultList();
     }
 
-    /**
-     * Находит всех реальных героев
-     * @return список HumanBeing, которые являются реальными героями
-     */
     public List<HumanBeing> findAllRealHeroes() {
         TypedQuery<HumanBeing> query = entityManager.createQuery(
             "SELECT h FROM HumanBeing h WHERE h.realHero = true", HumanBeing.class);

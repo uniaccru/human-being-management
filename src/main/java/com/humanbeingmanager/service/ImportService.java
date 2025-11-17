@@ -184,7 +184,6 @@ public class ImportService {
             }
         }
 
-        // Используем валидатор для проверки правила MACHINE_GUN
         if (weaponType != null) {
             businessRulesValidator.validateMachineGunRule(weaponType, dto.getImpactSpeed(), errors);
         }
@@ -197,7 +196,6 @@ public class ImportService {
             errors.append("Minutes of waiting is required; ");
         }
 
-        // Используем валидатор для общих правил валидации
         businessRulesValidator.validateName(dto.getName(), errors);
         businessRulesValidator.validateSoundtrackName(dto.getSoundtrackName(), errors);
         businessRulesValidator.validateCar(dto.getCar(), errors);

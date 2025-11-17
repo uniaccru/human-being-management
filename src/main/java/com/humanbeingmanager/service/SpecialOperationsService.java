@@ -44,10 +44,8 @@ public class SpecialOperationsService {
     public int deleteHeroesWithoutToothpicks() {
         LOGGER.log(Level.INFO, "Deleting all heroes without toothpicks");
         try {
-            // Получаем список героев без зубочисток из DAO
             List<HumanBeing> toDelete = humanBeingDao.findHeroesWithoutToothpicks();
             
-            // Бизнес-логика: удаляем каждого героя
             int deletedCount = 0;
             for (HumanBeing humanBeing : toDelete) {
                 humanBeingDao.delete(humanBeing);
@@ -67,10 +65,8 @@ public class SpecialOperationsService {
     public int setAllMoodToSadness() {
         LOGGER.log(Level.INFO, "Setting all heroes mood to SADNESS");
         try {
-            // Получаем список всех героев из DAO
             List<HumanBeing> heroes = humanBeingDao.findAllRealHeroes();
             
-            // Бизнес-логика: устанавливаем настроение SADNESS для каждого героя
             int updatedCount = 0;
             for (HumanBeing hero : heroes) {
                 hero.setMood(Mood.SADNESS);
