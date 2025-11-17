@@ -88,12 +88,12 @@ public class ImportService {
                 entitiesToCreate.add(humanBeing);
             }
 
-            // Validate unique coordinates within import list and in database
+            //в рамках файла
             for (int i = 0; i < entitiesToCreate.size(); i++) {
                 HumanBeing current = entitiesToCreate.get(i);
                 int rowNumber = i + 1;
                 
-                // Check for duplicates within the import list
+                //в рмках файла
                 String duplicateError = businessRulesValidator.validateUniqueCoordinatesInImportList(
                     entitiesToCreate, rowNumber
                 );
@@ -101,7 +101,7 @@ public class ImportService {
                     throw new ValidationException(duplicateError);
                 }
                 
-                // Check if coordinates already exist in database using existing validator
+                // в бд
                 StringBuilder coordinateErrors = new StringBuilder();
                 businessRulesValidator.validateUniqueCoordinates(current, false, null, coordinateErrors);
                 if (coordinateErrors.length() > 0) {

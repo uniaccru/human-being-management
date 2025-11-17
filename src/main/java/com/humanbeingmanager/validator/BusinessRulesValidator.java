@@ -68,10 +68,6 @@ public class BusinessRulesValidator {
                   .append(impactSpeed).append("); ");
         }
     }
-
-    /**
-     * Validates name according to business rules.
-     */
     public void validateName(String name, StringBuilder errors) {
         if (name != null) {
             String trimmed = name.trim();
@@ -253,14 +249,6 @@ public class BusinessRulesValidator {
         validateMachineGunRule(humanBeing, errors);
     }
 
-    /**
-     * Validates that coordinates are unique within the import list.
-     * Checks for duplicate coordinates between different HumanBeing objects in the list.
-     * 
-     * @param humanBeings List of HumanBeing entities to check for duplicates
-     * @param rowNumber Current row number (1-based) for error reporting
-     * @return Error message if duplicate found, null otherwise
-     */
     public String validateUniqueCoordinatesInImportList(List<HumanBeing> humanBeings, int rowNumber) {
         HumanBeing current = humanBeings.get(rowNumber - 1);
         if (current.getCoordinates() == null || current.getCoordinates().getX() == null) {
