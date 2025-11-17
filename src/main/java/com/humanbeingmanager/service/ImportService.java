@@ -109,12 +109,10 @@ public class ImportService {
                 }
 
                 if (current.getCoordinates() != null && current.getCoordinates().getX() != null) {
-                    Optional<HumanBeing> existing = humanBeingDao.findByCoordinates(
+                    if (businessRulesValidator.coordinatesExist(
                         current.getCoordinates().getX(),
-                        current.getCoordinates().getY(),
-                        null
-                    );
-                    if (existing.isPresent()) {
+                        current.getCoordinates().getY()
+                    )) {
                         throw new ValidationException(
                             "Row " + (i + 1) + ": HumanBeing with coordinates (" + 
                             current.getCoordinates().getX() + ", " + 

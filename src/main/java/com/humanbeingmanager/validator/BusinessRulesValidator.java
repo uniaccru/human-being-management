@@ -1,5 +1,6 @@
 package com.humanbeingmanager.validator;
 
+import com.humanbeingmanager.dao.HumanBeingDao;
 import com.humanbeingmanager.entity.HumanBeing;
 import com.humanbeingmanager.entity.Car;
 import com.humanbeingmanager.entity.Coordinates;
@@ -7,6 +8,8 @@ import com.humanbeingmanager.entity.WeaponType;
 import com.humanbeingmanager.dto.CoordinatesDto;
 import com.humanbeingmanager.dto.CarDto;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ejb.EJB;
+import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -14,6 +17,9 @@ import java.util.logging.Level;
 public class BusinessRulesValidator {
 
     private static final Logger LOGGER = Logger.getLogger(BusinessRulesValidator.class.getName());
+
+    @EJB
+    private HumanBeingDao humanBeingDao;
 
     /**
      * Применяет дефолтное значение для MACHINE_GUN, если impactSpeed равен 0
@@ -34,6 +40,36 @@ public class BusinessRulesValidator {
         if (humanBeing.getWeaponType() == WeaponType.MACHINE_GUN && humanBeing.getImpactSpeed() < 20) {
             errors.append("MACHINE_GUN requires impactSpeed >= 20 (current: ")
                   .append(humanBeing.getImpactSpeed()).append("); ");
+        }
+    }
+
+    /**
+     * Валидирует правило для MACHINE_GUN с учетом обновления (проверяет, изменилось ли значение)
+     * @param humanBeing сущность для валидации
+     * @param isUpdate флаг, указывающий, является ли это обновлением
+     * @param excludeId ID существующей сущности (для обновления)
+     * @param errors StringBuilder для накопления ошибок
+     */
+    public void validateMachineGunRule(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
+        if (humanBeing.getWeaponType() != WeaponType.MACHINE_GUN) {
+            return;
+        }
+        
+        boolean shouldCheck = true;
+        
+        if (isUpdate && excludeId != null) {
+            Optional<HumanBeing> existingOpt = humanBeingDao.findById(excludeId);
+            if (existingOpt.isPresent()) {
+                HumanBeing existing = existingOpt.get();
+                if (existing.getWeaponType() == WeaponType.MACHINE_GUN &&
+                    existing.getImpactSpeed() == humanBeing.getImpactSpeed()) {
+                    shouldCheck = false;
+                }
+            }
+        }
+        
+        if (shouldCheck) {
+            validateMachineGunRule(humanBeing, errors);
         }
     }
 
@@ -186,6 +222,66 @@ public class BusinessRulesValidator {
                 if (!car.getName().matches("^[a-zA-Z0-9\\s\\-_.]*$")) {
                     errors.append("Car name can only contain letters, numbers, spaces, hyphens, underscores, and periods; ");
                 }
+            }
+        }
+    }
+
+    /**
+     * Проверяет, существуют ли координаты в базе данных
+     * @param x координата X
+     * @param y координата Y
+     * @return true, если координаты уже существуют в базе
+     */
+    public boolean coordinatesExist(Integer x, double y) {
+        if (x == null) {
+            return false;
+        }
+        Optional<HumanBeing> existing = humanBeingDao.findByCoordinates(x, y, null);
+        return existing.isPresent();
+    }
+
+    /**
+     * Валидирует уникальность координат
+     * @param humanBeing сущность для валидации
+     * @param isUpdate флаг, указывающий, является ли это обновлением
+     * @param excludeId ID существующей сущности (для обновления, чтобы исключить её из проверки)
+     * @param errors StringBuilder для накопления ошибок
+     */
+    public void validateUniqueCoordinates(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
+        if (humanBeing.getCoordinates() == null || humanBeing.getCoordinates().getX() == null) {
+            return; 
+        }
+        
+        boolean shouldCheck = true;
+        
+        if (isUpdate && excludeId != null) {
+            Optional<HumanBeing> existingOpt = humanBeingDao.findById(excludeId);
+            if (existingOpt.isPresent()) {
+                HumanBeing existing = existingOpt.get();
+                if (existing.getCoordinates() != null) {
+                    Integer existingX = existing.getCoordinates().getX();
+                    double existingY = existing.getCoordinates().getY();
+                    
+                    if (existingX.equals(humanBeing.getCoordinates().getX()) && 
+                        existingY == humanBeing.getCoordinates().getY()) {
+                        shouldCheck = false;
+                    }
+                }
+            }
+        }
+        
+        if (shouldCheck) {
+            Optional<HumanBeing> existing = humanBeingDao.findByCoordinates(
+                humanBeing.getCoordinates().getX(),
+                humanBeing.getCoordinates().getY(),
+                excludeId
+            );
+            
+            if (existing.isPresent()) {
+                errors.append("HumanBeing with coordinates (" + 
+                    humanBeing.getCoordinates().getX() + ", " + 
+                    humanBeing.getCoordinates().getY() + 
+                    ") already exists; ");
             }
         }
     }

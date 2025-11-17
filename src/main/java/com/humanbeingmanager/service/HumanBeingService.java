@@ -210,72 +210,14 @@ public class HumanBeingService {
     }
 
 
-    // ограничения на уникальность координат
-    private void validateUniqueCoordinates(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
-        if (humanBeing.getCoordinates() == null || humanBeing.getCoordinates().getX() == null) {
-            return; 
-        }
-        
-        boolean shouldCheck = true;
-        
-        if (isUpdate && excludeId != null) {
-            HumanBeing existing = humanBeingDao.findById(excludeId).orElse(null);
-            if (existing != null && existing.getCoordinates() != null) {
-                Integer existingX = existing.getCoordinates().getX();
-                double existingY = existing.getCoordinates().getY();
-                
-                if (existingX.equals(humanBeing.getCoordinates().getX()) && 
-                    existingY == humanBeing.getCoordinates().getY()) {
-                    shouldCheck = false;
-                }
-            }
-        }
-        
-        if (shouldCheck) {
-            // проверка зерез запрос 
-            Optional<HumanBeing> existing = humanBeingDao.findByCoordinates(
-                humanBeing.getCoordinates().getX(),
-                humanBeing.getCoordinates().getY(),
-                excludeId
-            );
-            
-            if (existing.isPresent()) {
-                errors.append("HumanBeing with coordinates (" + 
-                    humanBeing.getCoordinates().getX() + ", " + 
-                    humanBeing.getCoordinates().getY() + 
-                    ") already exists; ");
-            }
-        }
-    }
-// на машин ган Ю20
-    private void validateMachineGunRule(HumanBeing humanBeing, boolean isUpdate, Long excludeId, StringBuilder errors) {
-        if (humanBeing.getWeaponType() != WeaponType.MACHINE_GUN) {
-            return;
-        }
-        
-        boolean shouldCheck = true;
-        
-        if (isUpdate && excludeId != null) {
-            HumanBeing existing = humanBeingDao.findById(excludeId).orElse(null);
-            if (existing != null) {
-                if (existing.getWeaponType() == WeaponType.MACHINE_GUN &&
-                    existing.getImpactSpeed() == humanBeing.getImpactSpeed()) {
-                    shouldCheck = false;
-                }
-            }
-        }
-        
-        if (shouldCheck) {
-            businessRulesValidator.validateMachineGunRule(humanBeing, errors);
-        }
-    }
-
-
     private void validateBusinessRules(HumanBeing humanBeing, boolean isUpdate, Long excludeId) throws ValidationException {
         StringBuilder errors = new StringBuilder();
         
-        validateUniqueCoordinates(humanBeing, isUpdate, excludeId, errors);
-        validateMachineGunRule(humanBeing, isUpdate, excludeId, errors);
+        // Используем валидатор для проверки уникальности координат
+        businessRulesValidator.validateUniqueCoordinates(humanBeing, isUpdate, excludeId, errors);
+        
+        // Используем валидатор для проверки правила MACHINE_GUN с учетом обновления
+        businessRulesValidator.validateMachineGunRule(humanBeing, isUpdate, excludeId, errors);
         
         // Используем валидатор для общих бизнес-правил
         businessRulesValidator.validateBusinessRules(humanBeing, errors);
