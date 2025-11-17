@@ -121,7 +121,6 @@ public class HumanBeingDao {
         return query.getResultList();
     }
 
-    // проверка через запрос с pessimistic lock для защиты от race condition
     public Optional<HumanBeing> findByCoordinates(Integer x, double y, Long excludeId) {
         StringBuilder jpql = new StringBuilder(
             "SELECT h FROM HumanBeing h WHERE h.coordinates.x = :x AND h.coordinates.y = :y");
@@ -138,16 +137,12 @@ public class HumanBeingDao {
             query.setParameter("excludeId", excludeId);
         }
         
-        // Используем PESSIMISTIC_WRITE для блокировки строки на запись
-        // Это предотвращает одновременное создание объектов с одинаковыми координатами
         query.setLockMode(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
         
-        // Устанавливаем timeout для блокировки (в миллисекундах)
-        // Если другая транзакция уже держит блокировку, ждем максимум 5 секунд
         try {
             query.setHint("jakarta.persistence.lock.timeout", 5000);
         } catch (Exception e) {
-            // Если hint не поддерживается, продолжаем без него
+
         }
         
         List<HumanBeing> results = query.getResultList();

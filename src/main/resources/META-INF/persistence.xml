@@ -24,18 +24,6 @@
             <property name="eclipselink.target-database" value="PostgreSQL"/>
             <property name="eclipselink.cache.shared.default" value="false"/>
             <property name="eclipselink.target-server" value="WildFly"/>
-            <!-- 
-                 Настройка уровня изоляции транзакций для защиты от race conditions.
-                 
-                 Значения уровня изоляции:
-                 1 = TRANSACTION_READ_UNCOMMITTED
-                 2 = TRANSACTION_READ_COMMITTED (по умолчанию в PostgreSQL)
-                 4 = TRANSACTION_REPEATABLE_READ
-                 8 = TRANSACTION_SERIALIZABLE (самый строгий, защищает от всех race conditions)
-                 
-                 Для EclipseLink с JTA транзакциями используется свойство eclipselink.jdbc.isolation
-            -->
-            <property name="eclipselink.jdbc.isolation" value="8"/>
         </properties>
     </persistence-unit>
 </persistence>

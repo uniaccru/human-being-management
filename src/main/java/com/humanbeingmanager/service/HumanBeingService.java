@@ -58,7 +58,6 @@ public class HumanBeingService {
     public HumanBeing createHumanBeing(HumanBeing humanBeing) throws ValidationException {
         LOGGER.log(Level.INFO, "Creating new HumanBeing: {0}", humanBeing.getName());
         
-        // Получаем блокировку для координат для защиты от race condition
         ReentrantLock coordinateLock = null;
         if (humanBeing.getCoordinates() != null && humanBeing.getCoordinates().getX() != null) {
             coordinateLock = coordinateLockManager.getLock(
@@ -85,7 +84,6 @@ public class HumanBeingService {
             businessRulesValidator.applyMachineGunDefault(humanBeing);
             
             validateHumanBeing(humanBeing);
-            // Проверка уникальности координат с pessimistic lock уже внутри
             validateBusinessRules(humanBeing, false, null);
             
             if (humanBeing.getCar() != null && humanBeing.getCar().getId() == null) {
