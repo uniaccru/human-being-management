@@ -23,6 +23,7 @@ import jakarta.validation.Validator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -47,6 +48,9 @@ public class HumanBeingService {
     @Inject
     private BusinessRulesValidator businessRulesValidator;
 
+    @Inject
+    private CoordinateLockManager coordinateLockManager;
+
     @Resource
     private SessionContext sessionContext;
 
@@ -54,6 +58,25 @@ public class HumanBeingService {
     public HumanBeing createHumanBeing(HumanBeing humanBeing) throws ValidationException {
         LOGGER.log(Level.INFO, "Creating new HumanBeing: {0}", humanBeing.getName());
         
+        // Получаем блокировку для координат для защиты от race condition
+        ReentrantLock coordinateLock = null;
+        if (humanBeing.getCoordinates() != null && humanBeing.getCoordinates().getX() != null) {
+            coordinateLock = coordinateLockManager.getLock(
+                humanBeing.getCoordinates().getX(), 
+                humanBeing.getCoordinates().getY()
+            );
+            coordinateLock.lock();
+            try {
+                return createHumanBeingInternal(humanBeing);
+            } finally {
+                coordinateLock.unlock();
+            }
+        } else {
+            return createHumanBeingInternal(humanBeing);
+        }
+    }
+    
+    private HumanBeing createHumanBeingInternal(HumanBeing humanBeing) throws ValidationException {
         try {
             if (humanBeing.getCreationDate() == null) {
                 humanBeing.setCreationDate(new java.util.Date());
@@ -62,6 +85,7 @@ public class HumanBeingService {
             businessRulesValidator.applyMachineGunDefault(humanBeing);
             
             validateHumanBeing(humanBeing);
+            // Проверка уникальности координат с pessimistic lock уже внутри
             validateBusinessRules(humanBeing, false, null);
             
             if (humanBeing.getCar() != null && humanBeing.getCar().getId() == null) {
