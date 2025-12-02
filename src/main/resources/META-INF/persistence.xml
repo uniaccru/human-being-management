@@ -22,8 +22,11 @@
             <property name="eclipselink.logging.level" value="INFO"/>
             <property name="eclipselink.logging.parameters" value="true"/>
             <property name="eclipselink.target-database" value="PostgreSQL"/>
-            <property name="eclipselink.cache.shared.default" value="false"/>
+            <property name="eclipselink.cache.shared.default" value="true"/>
             <property name="eclipselink.target-server" value="WildFly"/>
+            <!-- L2 Cache Configuration with Ehcache -->
+            <property name="eclipselink.cache.type.default" value="Full"/>
+            <property name="eclipselink.cache.size.default" value="1000"/>
         </properties>
     </persistence-unit>
 </persistence>

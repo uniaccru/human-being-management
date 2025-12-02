@@ -178,6 +178,7 @@ export interface ImportHistory {
   totalProcessed: number;
   failedCount: number;
   errorMessage: string | null;
+  fileKey: string | null;
   createdAt: string;
 }
 
@@ -187,8 +188,27 @@ export class ImportApi {
     return response.data;
   }
 
+  static async importHumanBeingsFromFile(file: File): Promise<ImportResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response: AxiosResponse<ImportResult> = await apiClient.post('/import/humanbeings/file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
   static async getImportHistory(): Promise<ImportHistory[]> {
     const response: AxiosResponse<ImportHistory[]> = await apiClient.get('/import/history');
+    return response.data;
+  }
+
+  static async downloadImportFile(importId: number): Promise<Blob> {
+    const response: AxiosResponse<Blob> = await apiClient.get(`/import/file/${importId}`, {
+      responseType: 'blob',
+    });
     return response.data;
   }
 }

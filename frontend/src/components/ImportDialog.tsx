@@ -18,9 +18,8 @@ import {
   TableRow,
   Chip,
 } from '@mui/material';
-import { CloudUpload as CloudUploadIcon } from '@mui/icons-material';
+import { CloudUpload as CloudUploadIcon, Download as DownloadIcon } from '@mui/icons-material';
 import { ImportApi, ImportResult, ImportHistory } from '../services/api';
-import { CreateHumanBeingRequest } from '../types';
 
 interface ImportDialogProps {
   onImportComplete: () => void;
@@ -86,20 +85,8 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
     setLoading(true);
 
     try {
-      const fileContent = await file.text();
-      
-      let humanBeings: CreateHumanBeingRequest[];
-      try {
-        humanBeings = JSON.parse(fileContent);
-      } catch (jsonError) {
-        throw new Error('Invalid JSON format: ' + (jsonError as Error).message);
-      }
-
-      if (!Array.isArray(humanBeings)) {
-        throw new Error('JSON должен содержать массив объектов');
-      }
-
-      const importResult = await ImportApi.importHumanBeings(humanBeings);
+      // Use new file upload API that saves file to MinIO
+      const importResult = await ImportApi.importHumanBeingsFromFile(file);
       setResult(importResult);
 
       await loadHistory(setHistory, setHistoryLoading);
@@ -123,6 +110,23 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
       setError(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadFile = async (importId: number) => {
+    try {
+      const blob = await ImportApi.downloadImportFile(importId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `import_${importId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      console.error('Failed to download file:', err);
+      alert('Ошибка при скачивании файла: ' + (err.message || 'Неизвестная ошибка'));
     }
   };
 
@@ -239,12 +243,13 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
                   <TableCell align="right">Всего</TableCell>
                   <TableCell align="right">Ошибок</TableCell>
                   <TableCell>Дата</TableCell>
+                  <TableCell>Файл</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {history.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
+                    <TableCell colSpan={8} align="center">
                       История импорта пуста
                     </TableCell>
                   </TableRow>
@@ -267,6 +272,22 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ onImportComplete }) => {
                       <TableCell align="right">{item.failedCount}</TableCell>
                       <TableCell>
                         {formatDate(item.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        {item.fileKey ? (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<DownloadIcon />}
+                            onClick={() => handleDownloadFile(item.id)}
+                          >
+                            Скачать
+                          </Button>
+                        ) : (
+                          <Typography variant="body2" color="textSecondary">
+                            Нет файла
+                          </Typography>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

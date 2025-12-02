@@ -5,6 +5,7 @@ import java.util.Date;
 
 @Entity
 @Table(name = "import_history")
+@Cacheable(true)
 public class ImportHistory {
     
     @Id
@@ -33,6 +34,9 @@ public class ImportHistory {
     @Temporal(TemporalType.TIMESTAMP)
     private Date createdAt;
     
+    @Column(name = "file_key")
+    private String fileKey;
+    
     public ImportHistory() {
         this.createdAt = new Date();
     }
@@ -46,6 +50,12 @@ public class ImportHistory {
         this.totalProcessed = totalProcessed;
         this.failedCount = failedCount;
         this.errorMessage = errorMessage;
+    }
+    
+    public ImportHistory(String status, String username, Integer addedCount, 
+                        Integer totalProcessed, Integer failedCount, String errorMessage, String fileKey) {
+        this(status, username, addedCount, totalProcessed, failedCount, errorMessage);
+        this.fileKey = fileKey;
     }
 
     public Long getId() {
@@ -110,6 +120,14 @@ public class ImportHistory {
     
     public void setCreatedAt(Date createdAt) {
         this.createdAt = createdAt;
+    }
+    
+    public String getFileKey() {
+        return fileKey;
+    }
+    
+    public void setFileKey(String fileKey) {
+        this.fileKey = fileKey;
     }
 }
 

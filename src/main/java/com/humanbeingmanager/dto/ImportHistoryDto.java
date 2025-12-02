@@ -11,6 +11,7 @@ public class ImportHistoryDto {
     private Integer totalProcessed;
     private Integer failedCount;
     private String errorMessage;
+    private String fileKey;
     
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private Date createdAt;
@@ -18,7 +19,7 @@ public class ImportHistoryDto {
     public ImportHistoryDto() {}
 
     public ImportHistoryDto(Long id, String status, String username, Integer addedCount,
-                           Integer totalProcessed, Integer failedCount, String errorMessage, Date createdAt) {
+                           Integer totalProcessed, Integer failedCount, String errorMessage, String fileKey, Date createdAt) {
         this.id = id;
         this.status = status;
         this.username = username;
@@ -26,6 +27,7 @@ public class ImportHistoryDto {
         this.totalProcessed = totalProcessed;
         this.failedCount = failedCount;
         this.errorMessage = errorMessage;
+        this.fileKey = fileKey;
         this.createdAt = createdAt;
     }
 
@@ -91,6 +93,14 @@ public class ImportHistoryDto {
 
     public void setCreatedAt(Date createdAt) {
         this.createdAt = createdAt;
+    }
+    
+    public String getFileKey() {
+        return fileKey;
+    }
+    
+    public void setFileKey(String fileKey) {
+        this.fileKey = fileKey;
     }
 }
 

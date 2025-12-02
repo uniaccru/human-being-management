@@ -7,6 +7,7 @@ import java.util.Date;
 
 @Entity
 @Table(name = "human_beings")
+@Cacheable(true)
 @NamedQueries({
     @NamedQuery(name = "HumanBeing.findAll", query = "SELECT h FROM HumanBeing h"),
     @NamedQuery(name = "HumanBeing.findById", query = "SELECT h FROM HumanBeing h WHERE h.id = :id"),
