@@ -5,6 +5,8 @@ import com.humanbeingmanager.entity.HumanBeing;
 import com.humanbeingmanager.entity.Car;
 import com.humanbeingmanager.mapper.EntityDtoMapper;
 import com.humanbeingmanager.service.HumanBeingService;
+import com.humanbeingmanager.exception.ValidationException;
+import com.humanbeingmanager.exception.EntityNotFoundException;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.ejb.EJB;
 import jakarta.inject.Inject;
@@ -93,7 +95,7 @@ public class HumanBeingResource {
             HumanBeing created = humanBeingService.createHumanBeing(humanBeing);
             return Response.status(Response.Status.CREATED).entity(mapper.toDto(created)).build();
             
-        } catch (HumanBeingService.ValidationException e) {
+        } catch (ValidationException e) {
             LOGGER.log(Level.WARNING, "Validation error creating HumanBeing", e);
             return Response.status(Response.Status.BAD_REQUEST)
                           .entity(ApiResponseDto.validationError(e.getMessage()))
@@ -123,12 +125,12 @@ public class HumanBeingResource {
             HumanBeing updated = humanBeingService.updateHumanBeing(humanBeing);
             return Response.ok(mapper.toDto(updated)).build();
             
-        } catch (HumanBeingService.ValidationException e) {
+        } catch (ValidationException e) {
             LOGGER.log(Level.WARNING, "Validation error updating HumanBeing", e);
             return Response.status(Response.Status.BAD_REQUEST)
                           .entity(ApiResponseDto.validationError(e.getMessage()))
                           .build();
-        } catch (HumanBeingService.EntityNotFoundException e) {
+        } catch (EntityNotFoundException e) {
             LOGGER.log(Level.WARNING, "HumanBeing not found for update", e);
             return Response.status(Response.Status.NOT_FOUND)
                           .entity(ApiResponseDto.error(e.getMessage()))
@@ -158,7 +160,7 @@ public class HumanBeingResource {
                               .build();
             }
             
-        } catch (HumanBeingService.EntityNotFoundException e) {
+        } catch (EntityNotFoundException e) {
             LOGGER.log(Level.WARNING, "HumanBeing not found for deletion", e);
             return Response.status(Response.Status.NOT_FOUND)
                           .entity(ApiResponseDto.error(e.getMessage()))
@@ -222,7 +224,7 @@ public class HumanBeingResource {
                 HumanBeing humanBeing = mapper.toEntity(humanBeingDto);
                 humanBeingService.createHumanBeing(humanBeing);
                 return Response.ok(ApiResponseDto.success("Validation successful")).build();
-            } catch (HumanBeingService.ValidationException e) {
+            } catch (ValidationException e) {
                 return Response.ok(ApiResponseDto.validationError(e.getMessage())).build();
             }
             

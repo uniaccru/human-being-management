@@ -10,6 +10,7 @@ import com.humanbeingmanager.dto.HumanBeingDto;
 import com.humanbeingmanager.dto.ImportResultDto;
 import com.humanbeingmanager.mapper.EntityDtoMapper;
 import com.humanbeingmanager.validator.BusinessRulesValidator;
+import com.humanbeingmanager.exception.ValidationException;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;
@@ -198,10 +199,6 @@ public class ImportService {
     }
 
 
-    public static class ValidationException extends Exception {
-        public ValidationException(String message) {
-            super(message);
-        }
-    }
+    
 }
 

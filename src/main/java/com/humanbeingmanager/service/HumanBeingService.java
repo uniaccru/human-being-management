@@ -11,6 +11,8 @@ import com.humanbeingmanager.dto.CarDto;
 import com.humanbeingmanager.dto.CoordinatesDto;
 import com.humanbeingmanager.mapper.EntityDtoMapper;
 import com.humanbeingmanager.validator.BusinessRulesValidator;
+import com.humanbeingmanager.exception.ValidationException;
+import com.humanbeingmanager.exception.EntityNotFoundException;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;
@@ -246,16 +248,6 @@ public class HumanBeingService {
         }
     }
 
-    public static class ValidationException extends Exception {
-        public ValidationException(String message) {
-            super(message);
-        }
-    }
-
-    public static class EntityNotFoundException extends Exception {
-        public EntityNotFoundException(String message) {
-            super(message);
-        }
-    }
+    
 
 }
