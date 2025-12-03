@@ -12,6 +12,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 import java.util.logging.Logger;
 import java.util.logging.Level;
+import okhttp3.OkHttpClient;
+import java.util.concurrent.TimeUnit;
 
 @Singleton
 @Startup
@@ -48,14 +50,23 @@ public class MinIOService {
         }
         
         try {
+            // Create OkHttpClient with timeouts to prevent hanging
+            OkHttpClient httpClient = new OkHttpClient.Builder()
+                    .connectTimeout(10, TimeUnit.SECONDS)  // Connection timeout: 10 seconds
+                    .writeTimeout(30, TimeUnit.SECONDS)     // Write timeout: 30 seconds
+                    .readTimeout(30, TimeUnit.SECONDS)      // Read timeout: 30 seconds
+                    .build();
+            
             minioClient = MinioClient.builder()
                     .endpoint(endpoint)
                     .credentials(accessKey, secretKey)
+                    .httpClient(httpClient)
                     .build();
             
             // Test connection with timeout
             try {
                 // Try to check if bucket exists (this will test the connection)
+                // This operation will timeout after 10 seconds if MinIO is unreachable
                 boolean found = minioClient.bucketExists(BucketExistsArgs.builder()
                         .bucket(bucketName)
                         .build());
@@ -70,13 +81,14 @@ public class MinIOService {
                 LOGGER.info("MinIO service initialized successfully. Endpoint: " + endpoint + ", Bucket: " + bucketName);
             } catch (Exception e) {
                 LOGGER.log(Level.WARNING, "MinIO connection test failed, but service will continue. " +
-                        "MinIO operations will fail until connection is established. Endpoint: " + endpoint, e);
+                        "MinIO operations will fail until connection is established. Endpoint: " + endpoint + 
+                        ". Error: " + e.getMessage(), e);
                 // Don't throw exception - allow application to start even if MinIO is unavailable
                 // The service will fail gracefully when trying to use MinIO
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to create MinIO client. MinIO operations will not be available. " +
-                    "Endpoint: " + endpoint, e);
+                    "Endpoint: " + endpoint + ". Error: " + e.getMessage(), e);
             // Don't throw exception - allow application to start
             // Set minioClient to null so we can check it later
             minioClient = null;
@@ -88,7 +100,14 @@ public class MinIOService {
      */
     private void checkMinIOAvailable() {
         if (minioClient == null) {
-            throw new RuntimeException("MinIO client is not initialized. Check MinIO connection and configuration.");
+            String errorMsg = String.format(
+                "MinIO client is not initialized. Endpoint: %s, Bucket: %s. " +
+                "Check if MinIO is running and accessible from WildFly server. " +
+                "Verify MINIO_ENDPOINT environment variable is set correctly.",
+                endpoint, bucketName
+            );
+            LOGGER.severe(errorMsg);
+            throw new RuntimeException(errorMsg);
         }
     }
     
@@ -117,8 +136,31 @@ public class MinIOService {
             LOGGER.info("File uploaded to MinIO with key: " + fileKey);
             return fileKey;
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to upload file to MinIO", e);
-            throw new RuntimeException("Failed to upload file to MinIO: " + e.getMessage(), e);
+            Throwable cause = e.getCause();
+            String errorMsg;
+            if (cause instanceof java.net.SocketTimeoutException || e instanceof java.net.SocketTimeoutException) {
+                errorMsg = String.format(
+                    "Connection timeout: Cannot connect to MinIO at %s. " +
+                    "WildFly server cannot reach MinIO. Test from WildFly server: curl %s/minio/health/live",
+                    endpoint, endpoint
+                );
+            } else if (cause instanceof java.util.concurrent.TimeoutException) {
+                errorMsg = String.format(
+                    "Timeout while uploading file to MinIO. Endpoint: %s. " +
+                    "MinIO may be unreachable or slow. Check network connectivity.",
+                    endpoint
+                );
+            } else if (cause instanceof java.net.ConnectException || e instanceof java.net.ConnectException) {
+                errorMsg = String.format(
+                    "Connection refused: Cannot connect to MinIO at %s. " +
+                    "Check if MinIO is running and endpoint is correct.",
+                    endpoint
+                );
+            } else {
+                errorMsg = "Failed to upload file to MinIO: " + e.getMessage();
+            }
+            LOGGER.log(Level.SEVERE, errorMsg, e);
+            throw new RuntimeException(errorMsg, e);
         }
     }
     
@@ -155,8 +197,24 @@ public class MinIOService {
             LOGGER.info("File uploaded to MinIO with key: " + key);
             return key;
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to upload file to MinIO", e);
-            throw new RuntimeException("Failed to upload file to MinIO: " + e.getMessage(), e);
+            Throwable cause = e.getCause();
+            String errorMsg;
+            if (cause instanceof java.util.concurrent.TimeoutException) {
+                errorMsg = String.format(
+                    "Timeout while uploading file to MinIO. Endpoint: %s. " +
+                    "MinIO may be unreachable or slow. Check network connectivity.",
+                    endpoint
+                );
+            } else if (cause instanceof java.net.ConnectException) {
+                errorMsg = String.format(
+                    "Cannot connect to MinIO at %s. Check if MinIO is running and endpoint is correct.",
+                    endpoint
+                );
+            } else {
+                errorMsg = "Failed to upload file to MinIO: " + e.getMessage();
+            }
+            LOGGER.log(Level.SEVERE, errorMsg, e);
+            throw new RuntimeException(errorMsg, e);
         }
     }
     
@@ -191,8 +249,29 @@ public class MinIOService {
             LOGGER.info("File committed from " + tempKey + " to " + finalKey);
             return finalKey;
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to commit file in MinIO", e);
-            throw new RuntimeException("Failed to commit file in MinIO: " + e.getMessage(), e);
+            Throwable cause = e.getCause();
+            String errorMsg;
+            if (cause instanceof java.net.SocketTimeoutException || e instanceof java.net.SocketTimeoutException) {
+                errorMsg = String.format(
+                    "Connection timeout: Cannot connect to MinIO at %s while committing file.",
+                    endpoint
+                );
+            } else if (cause instanceof java.util.concurrent.TimeoutException) {
+                errorMsg = String.format(
+                    "Timeout while committing file in MinIO. Endpoint: %s. " +
+                    "MinIO may be unreachable or slow.",
+                    endpoint
+                );
+            } else if (cause instanceof java.net.ConnectException || e instanceof java.net.ConnectException) {
+                errorMsg = String.format(
+                    "Connection refused: Cannot connect to MinIO at %s while committing file.",
+                    endpoint
+                );
+            } else {
+                errorMsg = "Failed to commit file in MinIO: " + e.getMessage();
+            }
+            LOGGER.log(Level.SEVERE, errorMsg, e);
+            throw new RuntimeException(errorMsg, e);
         }
     }
     
@@ -210,8 +289,28 @@ public class MinIOService {
                     .build()
             );
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to download file from MinIO: " + fileKey, e);
-            throw new RuntimeException("Failed to download file from MinIO: " + e.getMessage(), e);
+            Throwable cause = e.getCause();
+            String errorMsg;
+            if (cause instanceof java.net.SocketTimeoutException || e instanceof java.net.SocketTimeoutException) {
+                errorMsg = String.format(
+                    "Connection timeout: Cannot connect to MinIO at %s while downloading file.",
+                    endpoint
+                );
+            } else if (cause instanceof java.util.concurrent.TimeoutException) {
+                errorMsg = String.format(
+                    "Timeout while downloading file from MinIO. Endpoint: %s, FileKey: %s.",
+                    endpoint, fileKey
+                );
+            } else if (cause instanceof java.net.ConnectException || e instanceof java.net.ConnectException) {
+                errorMsg = String.format(
+                    "Connection refused: Cannot connect to MinIO at %s while downloading file.",
+                    endpoint
+                );
+            } else {
+                errorMsg = "Failed to download file from MinIO: " + e.getMessage();
+            }
+            LOGGER.log(Level.SEVERE, errorMsg, e);
+            throw new RuntimeException(errorMsg, e);
         }
     }
     

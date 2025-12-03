@@ -25,7 +25,7 @@ docker run -d -p 9000:9000 -p 9001:9001 \
 На удаленном сервере, где запущен WildFly, установите переменные окружения:
 
 ```bash
-export MINIO_ENDPOINT=http://ВАШ_IP_АДРЕС:9000
+export MINIO_ENDPOINT=http://192.168.31.47:9000
 export MINIO_ACCESS_KEY=minioadmin
 export MINIO_SECRET_KEY=minioadmin
 export MINIO_BUCKET_NAME=import-files
@@ -330,4 +330,6 @@ env | grep MINIO
 ```bash
 docker ps | grep minio
 ```
+
+
 

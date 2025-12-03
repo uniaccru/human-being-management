@@ -20,7 +20,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 60000, // 60 seconds for file uploads
 });
 
 apiClient.interceptors.response.use(
@@ -196,6 +196,7 @@ export class ImportApi {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 60000, // 60 seconds for file upload
     });
     return response.data;
   }

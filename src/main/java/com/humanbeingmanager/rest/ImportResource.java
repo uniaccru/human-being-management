@@ -12,9 +12,12 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.jboss.resteasy.annotations.providers.multipart.MultipartForm;
+import org.jboss.resteasy.plugins.providers.multipart.InputPart;
+import org.jboss.resteasy.plugins.providers.multipart.MultipartFormDataInput;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.logging.Logger;
@@ -26,6 +29,91 @@ import java.util.logging.Level;
 public class ImportResource {
 
     private static final Logger LOGGER = Logger.getLogger(ImportResource.class.getName());
+    
+    @GET
+    @Path("/test-minio")
+    public Response testMinIOConnection() {
+        try {
+            String endpoint = System.getenv("MINIO_ENDPOINT");
+            String accessKey = System.getenv("MINIO_ACCESS_KEY");
+            String secretKey = System.getenv("MINIO_SECRET_KEY");
+            String bucketName = System.getenv("MINIO_BUCKET_NAME");
+            
+            LOGGER.info("=== MinIO Configuration Test ===");
+            LOGGER.info("MINIO_ENDPOINT: " + (endpoint != null ? endpoint : "NOT SET"));
+            LOGGER.info("MINIO_ACCESS_KEY: " + (accessKey != null ? "SET (length: " + accessKey.length() + ")" : "NOT SET"));
+            LOGGER.info("MINIO_SECRET_KEY: " + (secretKey != null ? "SET (length: " + secretKey.length() + ")" : "NOT SET"));
+            LOGGER.info("MINIO_BUCKET_NAME: " + (bucketName != null ? bucketName : "NOT SET"));
+            
+            StringBuilder response = new StringBuilder();
+            response.append("{\"status\":\"ok\",");
+            response.append("\"endpoint\":\"").append(endpoint != null ? endpoint : "NOT SET").append("\",");
+            response.append("\"accessKey\":\"").append(accessKey != null ? "SET" : "NOT SET").append("\",");
+            response.append("\"secretKey\":\"").append(secretKey != null ? "SET" : "NOT SET").append("\",");
+            response.append("\"bucketName\":\"").append(bucketName != null ? bucketName : "NOT SET").append("\",");
+            
+            // Try to connect to MinIO with timeout protection
+            boolean minioConnected = false;
+            String minioError = null;
+            String serviceBucket = null;
+            try {
+                if (minIOService != null) {
+                    serviceBucket = minIOService.getBucketName();
+                    
+                    // First, check if file exists (lightweight operation) instead of uploading
+                    // This will test connection without creating files
+                    try {
+                        // Try to check if a non-existent file exists - this tests connection
+                        boolean exists = minIOService.fileExists("__test_connection_file_that_does_not_exist__");
+                        // If we get here without exception, connection works
+                        minioConnected = true;
+                        LOGGER.info("MinIO connection: SUCCESS (tested via fileExists)");
+                    } catch (Exception testEx) {
+                        // If fileExists fails, check the cause for more specific error messages
+                        Throwable cause = testEx.getCause();
+                        if (cause instanceof java.util.concurrent.TimeoutException) {
+                            minioError = "Connection timeout: MinIO is not reachable at " + endpoint + 
+                                       ". Check if MinIO is running and accessible from WildFly server.";
+                        } else if (cause instanceof java.net.ConnectException) {
+                            minioError = "Connection refused: Cannot connect to MinIO at " + endpoint + 
+                                       ". Check if MinIO is running and the endpoint is correct.";
+                        } else {
+                            minioError = "Connection test failed: " + testEx.getMessage();
+                        }
+                        LOGGER.log(Level.WARNING, "MinIO connection test failed", testEx);
+                    }
+                } else {
+                    minioError = "MinIOService is null - MinIO client not initialized";
+                    LOGGER.warning("MinIOService is null");
+                }
+            } catch (Exception e) {
+                // Check the cause for more specific error messages
+                Throwable cause = e.getCause();
+                if (cause instanceof java.util.concurrent.TimeoutException) {
+                    minioError = "Connection timeout: MinIO is not reachable at " + endpoint + 
+                               ". Check if MinIO is running and accessible from WildFly server.";
+                } else if (cause instanceof java.net.ConnectException) {
+                    minioError = "Connection refused: Cannot connect to MinIO at " + endpoint + 
+                               ". Check if MinIO is running and the endpoint is correct.";
+                } else {
+                    minioError = e.getClass().getSimpleName() + ": " + e.getMessage();
+                }
+                LOGGER.log(Level.SEVERE, "MinIO connection failed", e);
+            }
+            
+            response.append("\"serviceBucket\":\"").append(serviceBucket != null ? serviceBucket : "null").append("\",");
+            response.append("\"minioConnected\":").append(minioConnected).append(",");
+            response.append("\"minioError\":\"").append(minioError != null ? minioError.replace("\"", "'").replace("\n", " ") : "null").append("\"");
+            response.append("}");
+            
+            return Response.ok(response.toString()).build();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error testing MinIO connection", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                          .entity("{\"error\":\"" + e.getMessage().replace("\"", "'").replace("\n", " ") + "\"}")
+                          .build();
+        }
+    }
 
     @EJB
     private ImportService importService;
@@ -142,22 +230,42 @@ public class ImportResource {
     @POST
     @Path("/humanbeings/file")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response importHumanBeingsFromFile(
-            @FormDataParam("file") InputStream fileInputStream,
-            @FormDataParam("file") org.glassfish.jersey.media.multipart.FormDataContentDisposition fileDetail) {
+    public Response importHumanBeingsFromFile(MultipartFormDataInput input) {
+        
+        LOGGER.info("========== START FILE IMPORT ==========");
+        LOGGER.info("Timestamp: " + new java.util.Date());
+        LOGGER.info("MinIO Endpoint: " + System.getenv("MINIO_ENDPOINT"));
+        LOGGER.info("MinIO Bucket: " + System.getenv("MINIO_BUCKET_NAME"));
         
         String transactionId = null;
         String fileKey = null;
         
         try {
-            if (fileInputStream == null || fileDetail == null) {
+            LOGGER.info("Step 1: Parsing multipart form data");
+            Map<String, List<InputPart>> formData = input.getFormDataMap();
+            LOGGER.info("Form data keys: " + (formData != null ? formData.keySet() : "null"));
+            
+            if (formData == null || !formData.containsKey("file")) {
                 return Response.status(Response.Status.BAD_REQUEST)
                               .entity(ApiResponseDto.validationError("No file provided"))
                               .build();
             }
             
-            String fileName = fileDetail.getFileName();
-            String contentType = fileDetail.getType();
+            List<InputPart> inputParts = formData.get("file");
+            if (inputParts == null || inputParts.isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                              .entity(ApiResponseDto.validationError("No file provided"))
+                              .build();
+            }
+            
+            InputPart inputPart = inputParts.get(0);
+            LOGGER.info("Step 2: Getting file input stream");
+            InputStream fileInputStream = inputPart.getBody(InputStream.class, null);
+            
+            String fileName = getFileName(inputPart);
+            String contentType = inputPart.getMediaType().toString();
+            LOGGER.info("File name: " + fileName);
+            LOGGER.info("Content type: " + contentType);
             if (contentType == null || contentType.isEmpty()) {
                 contentType = "application/json";
             }
@@ -207,9 +315,26 @@ public class ImportResource {
             }
             
             // Phase 1: Prepare Database - import data
+            LOGGER.info("Step 6: Starting database import");
+            LOGGER.info("Number of HumanBeings to import: " + humanBeings.size());
             ImportResultDto result;
             try {
+                LOGGER.info("Step 6.1: Calling importService.importHumanBeings");
                 result = importService.importHumanBeings(humanBeings, transactionId);
+                LOGGER.info("Step 6.2: Import completed. Success: " + result.isSuccess());
+                
+                // Mark database as prepared for two-phase commit
+                if (result.isSuccess()) {
+                    transactionManager.prepareDatabase(transactionId);
+                    LOGGER.info("Phase 1 (Prepare) - Database: Transaction prepared: " + transactionId);
+                } else {
+                    // If import failed, rollback
+                    LOGGER.warning("Database import failed, rolling back transaction: " + transactionId);
+                    transactionManager.handleDatabaseFailure(transactionId);
+                    return Response.status(Response.Status.BAD_REQUEST)
+                                  .entity(ApiResponseDto.error("Import failed: " + result.getErrorMessage()))
+                                  .build();
+                }
             } catch (Exception e) {
                 LOGGER.log(Level.SEVERE, "Phase 1 (Prepare) - Database failed", e);
                 transactionManager.handleDatabaseFailure(transactionId);
@@ -318,5 +443,16 @@ public class ImportResource {
                           .entity("Error downloading file: " + e.getMessage())
                           .build();
         }
+    }
+    
+    private String getFileName(InputPart inputPart) {
+        String[] contentDisposition = inputPart.getHeaders().getFirst("Content-Disposition").split(";");
+        for (String filename : contentDisposition) {
+            if (filename.trim().startsWith("filename")) {
+                String[] name = filename.split("=");
+                return name[1].trim().replaceAll("\"", "");
+            }
+        }
+        return "unknown";
     }
 }

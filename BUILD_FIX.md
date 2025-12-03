@@ -67,3 +67,5 @@ mvn clean package -DskipTests
 
 Если не работает, используйте Решение 1.
 
+
+
