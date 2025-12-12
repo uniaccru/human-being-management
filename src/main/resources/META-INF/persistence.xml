@@ -6,7 +6,8 @@
              version="3.0">
 
     <persistence-unit name="HumanBeingPU" transaction-type="JTA">
-        <jta-data-source>java:/PostgresDS</jta-data-source>
+        <!-- Используем Druid DataSource напрямую -->
+        <jta-data-source>java:/PostgresDruidDS</jta-data-source>
         <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
         
         <class>com.humanbeingmanager.entity.HumanBeing</class>
