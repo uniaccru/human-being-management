@@ -4,4 +4,7 @@
        xsi:schemaLocation="https://jakarta.ee/xml/ns/cdi 
        https://jakarta.ee/xml/ns/cdi/beans_4_0.xsd"
        version="4.0" bean-discovery-mode="all">
+    <interceptors>
+        <class>com.humanbeingmanager.config.CacheStatisticsInterceptor</class>
+    </interceptors>
 </beans>

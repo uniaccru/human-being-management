@@ -18,10 +18,11 @@ public class HumanBeingDao {
     }
 
     public Optional<HumanBeing> findById(Long id) {
-        TypedQuery<HumanBeing> query = entityManager.createNamedQuery("HumanBeing.findById", HumanBeing.class);
-        query.setParameter("id", id);
-        List<HumanBeing> results = query.getResultList();
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        java.util.logging.Logger logger = java.util.logging.Logger.getLogger(HumanBeingDao.class.getName());
+        logger.info("HumanBeingDao.findById(" + id + ") - checking L2 cache...");
+        HumanBeing hb = entityManager.find(HumanBeing.class, id); // uses L2 cache when enabled
+        logger.info("HumanBeingDao.findById(" + id + ") - result: " + (hb != null ? "found" : "not found"));
+        return Optional.ofNullable(hb);
     }
 
     public List<HumanBeing> findAll() {
@@ -110,7 +111,7 @@ public class HumanBeingDao {
     }
 
     public boolean existsById(Long id) {
-        return findById(id).isPresent();
+        return entityManager.find(HumanBeing.class, id) != null;
     }
 
 

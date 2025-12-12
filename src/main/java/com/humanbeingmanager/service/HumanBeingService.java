@@ -11,6 +11,7 @@ import com.humanbeingmanager.dto.CarDto;
 import com.humanbeingmanager.dto.CoordinatesDto;
 import com.humanbeingmanager.mapper.EntityDtoMapper;
 import com.humanbeingmanager.validator.BusinessRulesValidator;
+import com.humanbeingmanager.config.CacheStatisticsLogging;
 import com.humanbeingmanager.exception.ValidationException;
 import com.humanbeingmanager.exception.EntityNotFoundException;
 import jakarta.ejb.Stateless;
@@ -20,6 +21,7 @@ import jakarta.ejb.SessionContext;
 import jakarta.ejb.EJB;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
+import jakarta.interceptor.Interceptors;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.util.List;
@@ -30,6 +32,8 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 @Stateless
+@CacheStatisticsLogging
+@Interceptors({com.humanbeingmanager.config.CacheStatisticsInterceptor.class})
 @TransactionAttribute(TransactionAttributeType.REQUIRED)
 public class HumanBeingService {
 

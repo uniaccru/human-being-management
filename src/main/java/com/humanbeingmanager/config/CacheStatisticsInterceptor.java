@@ -1,13 +1,12 @@
 package com.humanbeingmanager.config;
 
-import jakarta.inject.Inject;
 import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.Interceptor;
 import jakarta.interceptor.InvocationContext;
 import java.util.logging.Logger;
 
 /**
- * CDI Interceptor for logging L2 JPA Cache statistics (hits and misses).
+ * CDI/EJB Interceptor for logging L2 JPA Cache statistics (hits and misses).
  * Can be enabled/disabled via system property: cache.statistics.enabled
  */
 @Interceptor
@@ -16,18 +15,34 @@ public class CacheStatisticsInterceptor {
     
     private static final Logger LOGGER = Logger.getLogger(CacheStatisticsInterceptor.class.getName());
     
-    @Inject
-    private CacheStatisticsConfig config;
+    private static boolean isStatisticsEnabled() {
+        String propValue = System.getProperty("cache.statistics.enabled", "false");
+        return Boolean.parseBoolean(propValue);
+    }
     
     @AroundInvoke
     public Object logCacheStatistics(InvocationContext context) throws Exception {
-        if (!config.isStatisticsEnabled()) {
+        boolean enabled = isStatisticsEnabled();
+        LOGGER.info(String.format(
+            "CacheStatisticsInterceptor invoked for [%s.%s], statistics enabled: %s",
+            context.getTarget().getClass().getSimpleName(),
+            context.getMethod().getName(),
+            enabled
+        ));
+        
+        if (!enabled) {
             return context.proceed();
         }
         
         long startTime = System.currentTimeMillis();
         
         try {
+            LOGGER.info(String.format(
+                "Cache Statistics [%s.%s]: Method called (L2 cache statistics enabled)",
+                context.getTarget().getClass().getSimpleName(),
+                context.getMethod().getName()
+            ));
+            
             Object result = context.proceed();
             
             long executionTime = System.currentTimeMillis() - startTime;
@@ -38,14 +53,12 @@ public class CacheStatisticsInterceptor {
             // In a production environment, you would use EclipseLink's SessionProfiler or
             // JMX MBeans to get actual cache hit/miss statistics
             
-            if (executionTime > 50) { // Log only if execution takes significant time
-                LOGGER.info(String.format(
-                    "Cache Statistics [%s.%s]: ExecutionTime=%dms (L2 cache enabled - check EclipseLink logs for detailed cache statistics)",
-                    context.getTarget().getClass().getSimpleName(),
-                    context.getMethod().getName(),
-                    executionTime
-                ));
-            }
+            LOGGER.info(String.format(
+                "Cache Statistics [%s.%s]: ExecutionTime=%dms (L2 cache enabled - check EclipseLink logs for detailed cache statistics)",
+                context.getTarget().getClass().getSimpleName(),
+                context.getMethod().getName(),
+                executionTime
+            ));
             
             return result;
         } catch (Exception e) {
