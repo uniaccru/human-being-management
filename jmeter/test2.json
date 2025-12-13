@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Charlie Brown",
+    "coordinates": {
+      "x": 102,
+      "y": 202.3
+    },
+    "realHero": true,
+    "hasToothpick": true,
+    "car": {
+      "name": "Audi",
+      "cool": true
+    },
+    "mood": "SADNESS",
+    "impactSpeed": 120.0,
+    "soundtrackName": "Dramatic Theme",
+    "minutesOfWaiting": 20,
+    "weaponType": "RIFLE"
+  },
+  {
+    "name": "Diana Prince",
+    "coordinates": {
+      "x": 103,
+      "y": 203.2
+    },
+    "realHero": true,
+    "hasToothpick": false,
+    "car": {
+      "name": "Tesla",
+      "cool": true
+    },
+    "mood": "FRENZY",
+    "impactSpeed": 200.0,
+    "soundtrackName": "Hero Theme",
+    "minutesOfWaiting": 60,
+    "weaponType": "KNIFE"
+  }
+]

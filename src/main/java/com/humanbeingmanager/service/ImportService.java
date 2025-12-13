@@ -45,9 +45,8 @@ public class ImportService {
     private SessionContext sessionContext;
 
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
-    public ImportResultDto importHumanBeings(List<HumanBeingDto> humanBeingDtos, String transactionId) {
-        LOGGER.log(Level.INFO, "Starting import of {0} HumanBeings (transaction: {1})", 
-                   new Object[]{humanBeingDtos.size(), transactionId});
+    public ImportResultDto importHumanBeings(List<HumanBeingDto> humanBeingDtos) {
+        LOGGER.log(Level.INFO, "Starting import of {0} HumanBeings", humanBeingDtos.size());
         
         List<String> errors = new ArrayList<>();
         int successfullyImported = 0;

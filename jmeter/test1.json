@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Alice Smith",
+    "coordinates": {
+      "x": 100,
+      "y": 200.5
+    },
+    "realHero": true,
+    "hasToothpick": false,
+    "car": {
+      "name": "BMW",
+      "cool": true
+    },
+    "mood": "RAGE",
+    "impactSpeed": 100.0,
+    "soundtrackName": "Action Theme 1",
+    "minutesOfWaiting": 30,
+    "weaponType": "SHOTGUN"
+  },
+  {
+    "name": "Bob Johnson",
+    "coordinates": {
+      "x": 101,
+      "y": 201.7
+    },
+    "realHero": false,
+    "hasToothpick": true,
+    "car": {
+      "name": "Mercedes",
+      "cool": false
+    },
+    "mood": "CALM",
+    "impactSpeed": 150.5,
+    "soundtrackName": "Epic Soundtrack 1",
+    "minutesOfWaiting": 45,
+    "weaponType": "AXE"
+  }
+]
