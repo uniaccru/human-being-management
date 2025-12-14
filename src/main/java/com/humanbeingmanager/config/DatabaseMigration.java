@@ -21,7 +21,7 @@ public class DatabaseMigration {
     
     private static final Logger LOGGER = Logger.getLogger(DatabaseMigration.class.getName());
     
-    @Resource(lookup = "java:/PostgresDS")
+    @Resource(lookup = "java:/PostgresDruidDS")
     private DataSource dataSource;
     
     @PostConstruct
@@ -30,20 +30,20 @@ public class DatabaseMigration {
         try {
             LOGGER.info("Starting database migration...");
             
-            // Добавление колонки file_key в таблицу import_history, если её нет
             try (Connection conn = dataSource.getConnection();
                  Statement stmt = conn.createStatement()) {
                 
+                // Добавление колонки file_key в таблицу import_history, если её нет
                 stmt.execute("ALTER TABLE import_history ADD COLUMN IF NOT EXISTS file_key VARCHAR(255)");
                 LOGGER.info("Migration completed: file_key column added to import_history table");
                 
             } catch (Exception e) {
                 // Игнорируем ошибку, если колонка уже существует или таблица не существует
                 String errorMsg = e.getMessage();
-                if (errorMsg != null && errorMsg.contains("already exists")) {
-                    LOGGER.info("Column file_key already exists in import_history table - skipping migration");
+                if (errorMsg != null && (errorMsg.contains("already exists") || errorMsg.contains("duplicate"))) {
+                    LOGGER.info("Migration objects already exist - skipping: " + errorMsg);
                 } else {
-                    LOGGER.log(Level.WARNING, "Migration for file_key column: " + errorMsg, e);
+                    LOGGER.log(Level.WARNING, "Migration error: " + errorMsg, e);
                 }
             }
             

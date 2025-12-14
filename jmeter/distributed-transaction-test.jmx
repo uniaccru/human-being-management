@@ -83,50 +83,70 @@ if (!file.exists()) {
     return
 }
 
-// Generate unique coordinates within -1000 to 1000 range
-// Use thread number, timestamp, and nanoseconds for maximum uniqueness
-int threadNum = ctx.getThreadNum()
-long timestamp = System.currentTimeMillis()
-long nanoTime = System.nanoTime()
-// Combine all for maximum uniqueness - nanoTime gives microsecond precision
-int uniqueId = (int)((timestamp + nanoTime + threadNum * 1000000000L) % 10000)
-
 // Read and modify JSON to make coordinates unique
 String fileContent = new File(filePath).text
 def jsonSlurper = new JsonSlurper()
 def data = jsonSlurper.parseText(fileContent)
 
+// Generate unique coordinates within -1000 to 1000 range
+// Use thread number, timestamp, nanoseconds, index, and random for maximum uniqueness
+int threadNum = ctx.getThreadNum()
+long baseTimestamp = System.currentTimeMillis()
+Random random = new Random()
+
 // Modify coordinates to be unique (staying within -1000 to 1000 range, not zero)
 if (data instanceof List) {
     data.eachWithIndex { item, index -&gt;
         if (item.coordinates) {
-            // Calculate unique coordinates: 
-            // - Use thread number for base separation (each thread gets different range)
-            // - Use index for separation within file
-            // - Use uniqueId for additional uniqueness
-            // Thread 0: x=100-199, Thread 1: x=200-299, Thread 2: x=300-399, etc.
-            int threadBaseX = 100 + (threadNum * 100)  // 100, 200, 300, 400, 500
-            double threadBaseY = 200.5 + (threadNum * 100)  // 200.5, 300.5, 400.5, 500.5, 600.5
+            // Generate unique values for each element separately
+            long nanoTime = System.nanoTime()
+            int randomValue = random.nextInt(10000)
+            int randomOffsetX = random.nextInt(100) - 50  // Random offset between -50 and 50
+            int randomOffsetY = random.nextInt(100) - 50
             
-            // Add index offset (0, 5, 10, etc.) and uniqueId for extra uniqueness
-            int xOffset = (index * 10) + (uniqueId % 50) + 1
-            double yOffset = (index * 10) + (uniqueId % 50) + 1.1
+            // Create unique ID for this specific element combining all factors
+            long elementUniqueId = (baseTimestamp + nanoTime + threadNum * 1000000000L + index * 100000L + randomValue) % 2000000L
             
-            int baseX = threadBaseX + xOffset
-            double baseY = threadBaseY + yOffset
+            // Calculate unique coordinates using multiple factors:
+            // - Thread number for base separation (each thread gets different range)
+            // - Index for separation within file
+            // - Unique ID for this element
+            // - Random offsets for additional unpredictability
+            // Thread 0: x=-900 to -100, Thread 1: x=-100 to 100, Thread 2: x=100 to 300, etc.
+            int threadBaseX = -900 + (threadNum * 200)  // -900, -700, -500, -300, -100
+            double threadBaseY = -800.5 + (threadNum * 200)  // -800.5, -600.5, -400.5, -200.5, -0.5
+            
+            // Calculate offsets with multiple uniqueness factors
+            int indexOffset = index * 15  // More spacing between elements
+            int uniqueOffsetX = (int)(elementUniqueId % 150)  // Use modulo for range control
+            double uniqueOffsetY = (elementUniqueId % 150) + 0.5
+            
+            // Combine all offsets
+            int totalOffsetX = indexOffset + uniqueOffsetX + randomOffsetX
+            double totalOffsetY = indexOffset + uniqueOffsetY + randomOffsetY
+            
+            int baseX = threadBaseX + totalOffsetX
+            double baseY = threadBaseY + totalOffsetY
             
             // Ensure within valid range and not zero
-            if (baseX &gt;= 1000) {
-                baseX = 900 - (threadNum * 10) - (index * 5) - (uniqueId % 10)
+            while (baseX &gt;= 1000 || baseX &lt;= -1000 || baseX == 0) {
+                if (baseX &gt;= 1000) {
+                    baseX = 900 - (threadNum * 50) - (index * 20) - (int)(elementUniqueId % 30) - random.nextInt(20)
+                } else if (baseX &lt;= -1000) {
+                    baseX = -900 + (threadNum * 50) + (index * 20) + (int)(elementUniqueId % 30) + random.nextInt(20)
+                } else if (baseX == 0) {
+                    baseX = 1 + (threadNum * 10) + (index * 5) + (int)(elementUniqueId % 10) + random.nextInt(5)
+                }
             }
-            if (baseX &lt;= -1000 || baseX == 0) {
-                baseX = 1 + threadNum * 50 + index * 5 + (uniqueId % 10)
-            }
-            if (baseY &gt;= 1000) {
-                baseY = 900.0 - (threadNum * 10) - (index * 5) - (uniqueId % 10) - 0.1
-            }
-            if (baseY &lt;= -1000 || baseY == 0) {
-                baseY = 1.1 + threadNum * 50 + index * 5 + (uniqueId % 10)
+            
+            while (baseY &gt;= 1000 || baseY &lt;= -1000 || baseY == 0) {
+                if (baseY &gt;= 1000) {
+                    baseY = 900.0 - (threadNum * 50) - (index * 20) - (elementUniqueId % 30) - random.nextInt(20) - 0.5
+                } else if (baseY &lt;= -1000) {
+                    baseY = -900.0 + (threadNum * 50) + (index * 20) + (elementUniqueId % 30) + random.nextInt(20) + 0.5
+                } else if (baseY == 0) {
+                    baseY = 1.1 + (threadNum * 10) + (index * 5) + (elementUniqueId % 10) + random.nextInt(5)
+                }
             }
             
             item.coordinates.x = baseX

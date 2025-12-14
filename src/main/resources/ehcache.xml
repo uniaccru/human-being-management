@@ -4,7 +4,6 @@
         xsi:schemaLocation="http://www.ehcache.org/v3 
         http://www.ehcache.org/schema/ehcache-core-3.0.xsd">
 
-    <!-- Cache for HumanBeing entity -->
     <cache-template name="entityCacheTemplate">
         <key-type>java.lang.Long</key-type>
         <value-type>java.lang.Object</value-type>
@@ -19,19 +18,16 @@
         </expiry>
     </cache-template>
 
-    <!-- Cache for HumanBeing -->
     <cache alias="com.humanbeingmanager.entity.HumanBeing" uses-template="entityCacheTemplate">
         <key-type>java.lang.Long</key-type>
         <value-type>com.humanbeingmanager.entity.HumanBeing</value-type>
     </cache>
 
-    <!-- Cache for Car -->
     <cache alias="com.humanbeingmanager.entity.Car" uses-template="entityCacheTemplate">
         <key-type>java.lang.Long</key-type>
         <value-type>com.humanbeingmanager.entity.Car</value-type>
     </cache>
 
-    <!-- Cache for ImportHistory -->
     <cache alias="com.humanbeingmanager.entity.ImportHistory" uses-template="entityCacheTemplate">
         <key-type>java.lang.Long</key-type>
         <value-type>com.humanbeingmanager.entity.ImportHistory</value-type>

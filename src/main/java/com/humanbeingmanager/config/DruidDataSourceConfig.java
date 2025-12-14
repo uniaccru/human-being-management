@@ -11,13 +11,6 @@ import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
-/**
- * Конфигурация Druid Connection Pool
- * 
- * Когда приложение деплоится на WildFly, пул уже настроен в standalone.xml.
- * Этот бин просто делает lookup готового DataSource в JNDI, без ручной
- * инициализации пула и без требований к переменным окружения.
- */
 @Singleton
 @Startup
 public class DruidDataSourceConfig {
@@ -26,15 +19,16 @@ public class DruidDataSourceConfig {
     
     private static final String JNDI_NAME = "java:/PostgresDruidDS";
     
-    private DataSource dataSource;
+    private DataSource dataSource; //здесь храним ссылку на пул соединений
     
     @PostConstruct
     public void init() {
         try {
-            LOGGER.info("========== Lookup Druid DataSource from WildFly JNDI ==========");
+            LOGGER.info("Lookup Druid DataSource");
             Context ctx = new InitialContext();
-            dataSource = (DataSource) ctx.lookup(JNDI_NAME);
-            LOGGER.info("Found datasource in JNDI: " + JNDI_NAME);
+            dataSource = (DataSource) ctx.lookup(JNDI_NAME); //ищем готовый датасурс по имени 
+            //найди в контексте JNDI по имени -> преобразуй его к датасурс -> сохрани ссылку в переменную
+            LOGGER.info("Found datasource in JNDI");
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to initialize Druid Connection Pool", e);
             throw new RuntimeException("Failed to initialize Druid Connection Pool", e);
@@ -44,18 +38,14 @@ public class DruidDataSourceConfig {
     @PreDestroy
     public void destroy() {
         try {
-            // Ничего закрывать не нужно — пул управляется контейнером
-            dataSource = null;
+            dataSource = null; //обнуляем ссылку на датасурс. не закрываем пул, вайлдфлай сделает это сам
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Error closing Druid Connection Pool", e);
         }
     }
     
-    /**
-     * Получить Druid DataSource (если инициализирован)
-     */
     public DataSource getDruidDataSource() {
-        return dataSource;
+        return dataSource; //метод для получение датасурс другими частями приложения
     }
 }
 

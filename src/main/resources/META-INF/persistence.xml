@@ -6,7 +6,6 @@
              version="3.0">
 
     <persistence-unit name="HumanBeingPU" transaction-type="JTA">
-        <!-- Используем Druid DataSource напрямую -->
         <jta-data-source>java:/PostgresDruidDS</jta-data-source>
         <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
         
@@ -20,17 +19,13 @@
         <properties>
             <property name="eclipselink.ddl-generation" value="create-or-extend-tables"/>
             <property name="eclipselink.ddl-generation.output-mode" value="database"/>
-            <property name="eclipselink.logging.level" value="FINE"/>
-            <property name="eclipselink.logging.level.cache" value="FINE"/>
+            <property name="eclipselink.logging.level" value="INFO"/>
             <property name="eclipselink.logging.parameters" value="true"/>
             <property name="eclipselink.target-database" value="PostgreSQL"/>
             <property name="eclipselink.cache.shared.default" value="true"/>
             <property name="eclipselink.target-server" value="WildFly"/>
-            <!-- L2 Cache Configuration with Ehcache -->
             <property name="eclipselink.cache.type.default" value="Full"/>
             <property name="eclipselink.cache.size.default" value="1000"/>
-            <property name="eclipselink.cache.query-results" value="true"/>
-            <property name="eclipselink.query-results-cache" value="true"/>
         </properties>
     </persistence-unit>
 </persistence>

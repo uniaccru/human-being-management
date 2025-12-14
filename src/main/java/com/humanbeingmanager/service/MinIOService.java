@@ -50,11 +50,10 @@ public class MinIOService {
         }
         
         try {
-            // Create OkHttpClient with timeouts to prevent hanging
             OkHttpClient httpClient = new OkHttpClient.Builder()
-                    .connectTimeout(10, TimeUnit.SECONDS)  // Connection timeout: 10 seconds
-                    .writeTimeout(30, TimeUnit.SECONDS)     // Write timeout: 30 seconds
-                    .readTimeout(30, TimeUnit.SECONDS)      // Read timeout: 30 seconds
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .writeTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS) 
                     .build();
             
             minioClient = MinioClient.builder()
@@ -62,11 +61,8 @@ public class MinIOService {
                     .credentials(accessKey, secretKey)
                     .httpClient(httpClient)
                     .build();
-            
-            // Test connection with timeout
+
             try {
-                // Try to check if bucket exists (this will test the connection)
-                // This operation will timeout after 10 seconds if MinIO is unreachable
                 boolean found = minioClient.bucketExists(BucketExistsArgs.builder()
                         .bucket(bucketName)
                         .build());
@@ -83,21 +79,14 @@ public class MinIOService {
                 LOGGER.log(Level.WARNING, "MinIO connection test failed, but service will continue. " +
                         "MinIO operations will fail until connection is established. Endpoint: " + endpoint + 
                         ". Error: " + e.getMessage(), e);
-                // Don't throw exception - allow application to start even if MinIO is unavailable
-                // The service will fail gracefully when trying to use MinIO
             }
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to create MinIO client. MinIO operations will not be available. " +
                     "Endpoint: " + endpoint + ". Error: " + e.getMessage(), e);
-            // Don't throw exception - allow application to start
-            // Set minioClient to null so we can check it later
             minioClient = null;
         }
     }
-    
-    /**
-     * Check if MinIO is available
-     */
+
     private void checkMinIOAvailable() {
         if (minioClient == null) {
             String errorMsg = String.format(
@@ -111,13 +100,7 @@ public class MinIOService {
         }
     }
     
-    /**
-     * Upload file to MinIO with a unique key
-     * @param inputStream File input stream
-     * @param contentType Content type
-     * @param size File size
-     * @return File key (object name) in MinIO
-     */
+
     public String uploadFile(InputStream inputStream, String contentType, long size) 
             throws MinioException, IOException, NoSuchAlgorithmException, InvalidKeyException {
         checkMinIOAvailable();
@@ -141,19 +124,17 @@ public class MinIOService {
             if (cause instanceof java.net.SocketTimeoutException || e instanceof java.net.SocketTimeoutException) {
                 errorMsg = String.format(
                     "Connection timeout: Cannot connect to MinIO at %s. " +
-                    "WildFly server cannot reach MinIO. Test from WildFly server: curl %s/minio/health/live",
+                    "WildFly server cannot reach MinIO. ",
                     endpoint, endpoint
                 );
             } else if (cause instanceof java.util.concurrent.TimeoutException) {
                 errorMsg = String.format(
-                    "Timeout while uploading file to MinIO. Endpoint: %s. " +
-                    "MinIO may be unreachable or slow. Check network connectivity.",
+                    "Timeout while uploading file to MinIO. Endpoint: %s. " ,
                     endpoint
                 );
             } else if (cause instanceof java.net.ConnectException || e instanceof java.net.ConnectException) {
                 errorMsg = String.format(
-                    "Connection refused: Cannot connect to MinIO at %s. " +
-                    "Check if MinIO is running and endpoint is correct.",
+                    "Connection refused: Cannot connect to MinIO at %s. ",
                     endpoint
                 );
             } else {
@@ -164,23 +145,13 @@ public class MinIOService {
         }
     }
     
-    /**
-     * Upload file with temporary key (for two-phase commit)
-     * @param inputStream File input stream
-     * @param contentType Content type
-     * @param size File size
-     * @return Temporary file key
-     */
     public String uploadFileTemporary(InputStream inputStream, String contentType, long size) 
             throws MinioException, IOException, NoSuchAlgorithmException, InvalidKeyException {
         checkMinIOAvailable();
         String tempKey = "temp/" + generateFileKey();
         return uploadFileWithKey(inputStream, contentType, size, tempKey);
     }
-    
-    /**
-     * Upload file with specific key
-     */
+
     private String uploadFileWithKey(InputStream inputStream, String contentType, long size, String key) 
             throws MinioException, IOException, NoSuchAlgorithmException, InvalidKeyException {
         checkMinIOAvailable();
@@ -202,12 +173,12 @@ public class MinIOService {
             if (cause instanceof java.util.concurrent.TimeoutException) {
                 errorMsg = String.format(
                     "Timeout while uploading file to MinIO. Endpoint: %s. " +
-                    "MinIO may be unreachable or slow. Check network connectivity.",
+                    "MinIO may be unreachable",
                     endpoint
                 );
             } else if (cause instanceof java.net.ConnectException) {
                 errorMsg = String.format(
-                    "Cannot connect to MinIO at %s. Check if MinIO is running and endpoint is correct.",
+                    "Cannot connect to MinIO at %s.",
                     endpoint
                 );
             } else {
@@ -218,20 +189,17 @@ public class MinIOService {
         }
     }
     
-    /**
-     * Commit temporary file (rename from temp/ to final location)
-     */
+
     public String commitFile(String tempKey) throws MinioException, IOException, 
             NoSuchAlgorithmException, InvalidKeyException {
         checkMinIOAvailable();
         if (!tempKey.startsWith("temp/")) {
-            return tempKey; // Already committed
+            return tempKey; 
         }
         
-        String finalKey = tempKey.substring(5); // Remove "temp/" prefix
+        String finalKey = tempKey.substring(5); 
         
         try {
-            // Copy object to new location
             minioClient.copyObject(
                 CopyObjectArgs.builder()
                     .bucket(bucketName)
@@ -243,7 +211,6 @@ public class MinIOService {
                     .build()
             );
             
-            // Delete temporary file
             deleteFile(tempKey);
             
             LOGGER.info("File committed from " + tempKey + " to " + finalKey);
@@ -274,10 +241,7 @@ public class MinIOService {
             throw new RuntimeException(errorMsg, e);
         }
     }
-    
-    /**
-     * Download file from MinIO
-     */
+
     public InputStream downloadFile(String fileKey) throws MinioException, IOException, 
             NoSuchAlgorithmException, InvalidKeyException {
         checkMinIOAvailable();
@@ -313,10 +277,7 @@ public class MinIOService {
             throw new RuntimeException(errorMsg, e);
         }
     }
-    
-    /**
-     * Delete file from MinIO
-     */
+
     public void deleteFile(String fileKey) throws MinioException, IOException, 
             NoSuchAlgorithmException, InvalidKeyException {
         if (minioClient == null) {
@@ -333,13 +294,9 @@ public class MinIOService {
             LOGGER.info("File deleted from MinIO: " + fileKey);
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Failed to delete file from MinIO: " + fileKey, e);
-            // Don't throw exception - file might not exist
         }
     }
-    
-    /**
-     * Check if file exists
-     */
+
     public boolean fileExists(String fileKey) {
         if (minioClient == null) {
             return false;
@@ -357,9 +314,6 @@ public class MinIOService {
         }
     }
     
-    /**
-     * Generate unique file key
-     */
     private String generateFileKey() {
         return UUID.randomUUID().toString() + "_" + System.currentTimeMillis() + ".json";
     }

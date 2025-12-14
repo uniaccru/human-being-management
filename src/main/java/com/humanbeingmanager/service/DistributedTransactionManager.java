@@ -12,9 +12,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
-/**
- * Manages distributed transactions between database and MinIO using two-phase commit pattern
- */
 @Stateless
 public class DistributedTransactionManager {
     
@@ -30,9 +27,6 @@ public class DistributedTransactionManager {
     private static final ConcurrentHashMap<String, TransactionState> transactionStates = new ConcurrentHashMap<>();
     private static final ReentrantLock lock = new ReentrantLock();
     
-    /**
-     * Transaction state for two-phase commit
-     */
     public static class TransactionState {
         private String tempFileKey;
         private boolean minIOPrepared = false;
