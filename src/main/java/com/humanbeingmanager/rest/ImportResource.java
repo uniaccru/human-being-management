@@ -52,7 +52,7 @@ public class ImportResource {
             response.append("\"secretKey\":\"").append(secretKey != null ? "SET" : "NOT SET").append("\",");
             response.append("\"bucketName\":\"").append(bucketName != null ? bucketName : "NOT SET").append("\",");
             
-            // Try to connect to MinIO with timeout protection
+            // пробуем подключиться с защитой от таймаутаа
             boolean minioConnected = false;
             String minioError = null;
             String serviceBucket = null;
@@ -60,16 +60,12 @@ public class ImportResource {
                 if (minIOService != null) {
                     serviceBucket = minIOService.getBucketName();
                     
-                    // First, check if file exists (lightweight operation) instead of uploading
-                    // This will test connection without creating files
+                    //проверяем существует ли файл что проверить соединение
                     try {
-                        // Try to check if a non-existent file exists - this tests connection
                         boolean exists = minIOService.fileExists("__test_connection_file_that_does_not_exist__");
-                        // If we get here without exception, connection works
                         minioConnected = true;
                         LOGGER.info("MinIO connection: SUCCESS (tested via fileExists)");
                     } catch (Exception testEx) {
-                        // If fileExists fails, check the cause for more specific error messages
                         Throwable cause = testEx.getCause();
                         if (cause instanceof java.util.concurrent.TimeoutException) {
                             minioError = "Connection timeout: MinIO is not reachable at " + endpoint + 
@@ -87,7 +83,6 @@ public class ImportResource {
                     LOGGER.warning("MinIOService is null");
                 }
             } catch (Exception e) {
-                // Check the cause for more specific error messages
                 Throwable cause = e.getCause();
                 if (cause instanceof java.util.concurrent.TimeoutException) {
                     minioError = "Connection timeout: MinIO is not reachable at " + endpoint + 
@@ -143,7 +138,7 @@ public class ImportResource {
                               .build();
             }
 
-            // For JSON-only import (backward compatibility), no file storage
+            //для обратной совместимости, бех файлового хранилища
             String transactionId = null;
             ImportResultDto result = importService.importHumanBeings(humanBeings, transactionId);
 
@@ -156,7 +151,7 @@ public class ImportResource {
                 result.getTotalProcessed(),
                 result.getFailed(),
                 result.getErrorMessage(),
-                null // No file key for JSON-only import
+                null 
             );
             importHistoryDao.create(history);
             
@@ -241,7 +236,7 @@ public class ImportResource {
         String fileKey = null;
         
         try {
-            LOGGER.info("Step 1: Parsing multipart form data");
+            LOGGER.info("Parsing multipart form data");
             Map<String, List<InputPart>> formData = input.getFormDataMap();
             LOGGER.info("Form data keys: " + (formData != null ? formData.keySet() : "null"));
             
@@ -259,7 +254,7 @@ public class ImportResource {
             }
             
             InputPart inputPart = inputParts.get(0);
-            LOGGER.info("Step 2: Getting file input stream");
+            LOGGER.info("Getting file input stream");
             InputStream fileInputStream = inputPart.getBody(InputStream.class, null);
             
             String fileName = getFileName(inputPart);
@@ -270,7 +265,7 @@ public class ImportResource {
                 contentType = "application/json";
             }
             
-            // Read file content first to parse JSON and get size
+            // читаем содержание файля
             java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
             byte[] data = new byte[8192];
             int nRead;
@@ -283,7 +278,7 @@ public class ImportResource {
             LOGGER.log(Level.INFO, "POST /api/import/humanbeings/file - Uploading file: {0}, size: {1}", 
                       new Object[]{fileName, fileSize});
             
-            // Parse JSON before uploading to MinIO to validate format
+            // валидируем джсон перед загрузкой
             List<HumanBeingDto> humanBeings;
             try {
                 String fileContent = new String(fileBytes);
@@ -301,7 +296,7 @@ public class ImportResource {
                               .build();
             }
             
-            // Phase 1: Prepare MinIO - upload file with temporary key
+            // Phase 1: Prepare MinIO - загружаем с temp key
             try {
                 java.io.ByteArrayInputStream fileStream = new java.io.ByteArrayInputStream(fileBytes);
                 transactionId = transactionManager.prepareMinIO(fileStream, contentType, fileSize);
@@ -314,20 +309,36 @@ public class ImportResource {
                               .build();
             }
             
-            // Phase 1: Prepare Database - import data
-            LOGGER.info("Step 6: Starting database import");
+            // Phase 1: Prepare Database - check readiness first
+            LOGGER.info("Phase 1 (Prepare) - Database: Checking readiness for transaction: " + transactionId);
+            boolean dbPrepared = false;
+            try {
+                dbPrepared = transactionManager.prepareDatabase(transactionId);
+                if (!dbPrepared) {
+                    LOGGER.severe("Phase 1 (Prepare) - Database: NOT READY for transaction: " + transactionId);
+                    transactionManager.handleDatabaseFailure(transactionId);
+                    return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                                  .entity(ApiResponseDto.error("Database is not available"))
+                                  .build();
+                }
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Phase 1 (Prepare) - Database readiness check failed", e);
+                transactionManager.handleDatabaseFailure(transactionId);
+                return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+                              .entity(ApiResponseDto.error("Database readiness check failed: " + e.getMessage()))
+                              .build();
+            }
+            
+            // Phase 1: Execute database import (in JTA transaction that will be committed in Phase 2)
+            LOGGER.info("Phase 1 (Prepare) - Database: Executing import for transaction: " + transactionId);
             LOGGER.info("Number of HumanBeings to import: " + humanBeings.size());
             ImportResultDto result;
             try {
-                LOGGER.info("Step 6.1: Calling importService.importHumanBeings");
+                LOGGER.info("Calling importService.importHumanBeings");
                 result = importService.importHumanBeings(humanBeings, transactionId);
-                LOGGER.info("Step 6.2: Import completed. Success: " + result.isSuccess());
+                LOGGER.info("Import completed. Success: " + result.isSuccess());
                 
-                // Mark database as prepared for two-phase commit
-                if (result.isSuccess()) {
-                    transactionManager.prepareDatabase(transactionId);
-                    LOGGER.info("Phase 1 (Prepare) - Database: Transaction prepared: " + transactionId);
-                } else {
+                if (!result.isSuccess()) {
                     // If import failed, rollback
                     LOGGER.warning("Database import failed, rolling back transaction: " + transactionId);
                     transactionManager.handleDatabaseFailure(transactionId);
@@ -335,10 +346,14 @@ public class ImportResource {
                                   .entity(ApiResponseDto.error("Import failed: " + result.getErrorMessage()))
                                   .build();
                 }
+                
+                LOGGER.info("Phase 1 (Prepare) - Database: Import completed successfully, ready for commit");
             } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Phase 1 (Prepare) - Database failed", e);
+                LOGGER.log(Level.SEVERE, "Phase 1 (Prepare) - Database import failed", e);
                 transactionManager.handleDatabaseFailure(transactionId);
-                throw e;
+                return Response.status(Response.Status.BAD_REQUEST)
+                              .entity(ApiResponseDto.error("Import failed: " + e.getMessage()))
+                              .build();
             }
             
             // Phase 2: Commit - commit both MinIO and database

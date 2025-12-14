@@ -2,7 +2,7 @@
   {
     "name": "John Doe",
     "coordinates": {
-      "x": 14.3,
+      "x": 19.3,
       "y": 2.6
     },
     "realHero": true,
@@ -20,7 +20,7 @@
   {
     "name": "James Bond",
     "coordinates": {
-      "x": 62.31,
+      "x": 69.31,
       "y": 8.71
     },
     "realHero": false,

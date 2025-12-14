@@ -1,11 +1,15 @@
 package com.humanbeingmanager.service;
 
+import com.humanbeingmanager.entity.ImportHistory;
 import jakarta.ejb.EJB;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;
 import jakarta.ejb.SessionContext;
 import jakarta.annotation.Resource;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.PersistenceContextType;
 import java.io.InputStream;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,6 +26,9 @@ public class DistributedTransactionManager {
     
     @Resource
     private SessionContext sessionContext;
+    
+    @PersistenceContext(unitName = "HumanBeingPU", type = PersistenceContextType.TRANSACTION)
+    private EntityManager em;
     
     // Thread-safe storage for transaction state
     private static final ConcurrentHashMap<String, TransactionState> transactionStates = new ConcurrentHashMap<>();
@@ -87,6 +94,9 @@ public class DistributedTransactionManager {
         String transactionId = generateTransactionId();
         lock.lock();
         try {
+            // 2PC Coordinator Log: BEGIN
+            LOGGER.info("2PC Coordinator [BEGIN] - Transaction started: " + transactionId);
+            
             TransactionState state = new TransactionState(transactionId);
             
             try {
@@ -96,11 +106,13 @@ public class DistributedTransactionManager {
                 state.setMinIOPrepared(true);
                 
                 transactionStates.put(transactionId, state);
-                LOGGER.info("Phase 1 (Prepare) - MinIO: File uploaded with temp key: " + tempKey);
+                
+                // 2PC Coordinator Log: PREPARE-OK from MinIO RM
+                LOGGER.info("2PC Coordinator [PREPARE-OK] - MinIO RM: READY for transaction: " + transactionId);
                 
                 return transactionId;
             } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Phase 1 (Prepare) - MinIO failed", e);
+                LOGGER.log(Level.SEVERE, "2PC Coordinator [PREPARE-FAIL] - MinIO RM: NOT READY for transaction: " + transactionId, e);
                 // Mark transaction for rollback
                 sessionContext.setRollbackOnly();
                 throw new RuntimeException("Failed to prepare MinIO transaction", e);
@@ -111,11 +123,41 @@ public class DistributedTransactionManager {
     }
     
     /**
-     * Phase 1: Prepare - Mark database as prepared
+     * Phase 1: Check database readiness as resource
+     * Tests database connectivity without modifying data
      * @param transactionId Transaction ID
+     * @return true if database is ready, false otherwise
+     */
+    @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
+    public boolean checkDatabaseReadiness(String transactionId) {
+        try {
+            // Simple query to test database connectivity
+            Long count = em.createQuery("SELECT COUNT(ih) FROM ImportHistory ih", Long.class)
+                          .getSingleResult();
+            
+            // Force flush to ensure connection is tested
+            em.flush();
+            
+            // Rollback test transaction
+            sessionContext.setRollbackOnly();
+            
+            LOGGER.info("Phase 1 (Prepare) - Database readiness check: READY for transaction: " + transactionId);
+            return true;
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Phase 1 (Prepare) - Database readiness check: NOT READY for transaction: " + transactionId, e);
+            sessionContext.setRollbackOnly();
+            return false;
+        }
+    }
+    
+    /**
+     * Phase 1: Prepare - Mark database as prepared after readiness check
+     * This method marks database as prepared in coordinator state
+     * @param transactionId Transaction ID
+     * @return true if database is prepared, false if not ready
      */
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
-    public void prepareDatabase(String transactionId) {
+    public boolean prepareDatabase(String transactionId) {
         lock.lock();
         try {
             TransactionState state = transactionStates.get(transactionId);
@@ -123,8 +165,19 @@ public class DistributedTransactionManager {
                 throw new IllegalStateException("Transaction state not found: " + transactionId);
             }
             
-            state.setDbPrepared(true);
-            LOGGER.info("Phase 1 (Prepare) - Database: Transaction prepared: " + transactionId);
+            // Check database readiness first
+            boolean isReady = checkDatabaseReadiness(transactionId);
+            
+            if (isReady) {
+                state.setDbPrepared(true);
+                // 2PC Coordinator Log: PREPARE-OK from Database RM
+                LOGGER.info("2PC Coordinator [PREPARE-OK] - Database RM: READY for transaction: " + transactionId);
+                return true;
+            } else {
+                // 2PC Coordinator Log: PREPARE-FAIL from Database RM
+                LOGGER.severe("2PC Coordinator [PREPARE-FAIL] - Database RM: NOT READY for transaction: " + transactionId);
+                return false;
+            }
         } finally {
             lock.unlock();
         }
@@ -148,24 +201,32 @@ public class DistributedTransactionManager {
                 throw new IllegalStateException("Transaction not fully prepared: " + transactionId);
             }
             
+            // 2PC Coordinator Log: DECISION - COMMIT
+            LOGGER.info("2PC Coordinator [DECISION: COMMIT] - All RMs prepared, committing transaction: " + transactionId);
+            
             try {
                 // Commit MinIO: rename from temp/ to final location
                 String finalKey = minIOService.commitFile(state.getTempFileKey());
+                
+                // Commit database transaction explicitly
+                commitDatabase(transactionId);
+                
                 state.setCommitted(true);
                 
-                LOGGER.info("Phase 2 (Commit) - Transaction committed: " + transactionId + ", Final key: " + finalKey);
+                // 2PC Coordinator Log: COMMIT completed
+                LOGGER.info("2PC Coordinator [COMMIT-COMPLETE] - Transaction committed: " + transactionId + ", Final key: " + finalKey);
                 
                 // Clean up transaction state after successful commit
                 transactionStates.remove(transactionId);
                 
                 return finalKey;
             } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Phase 2 (Commit) - MinIO commit failed", e);
-                // Rollback database transaction
-                sessionContext.setRollbackOnly();
-                // Try to clean up MinIO
+                // 2PC Coordinator Log: COMMIT failed, rolling back
+                LOGGER.log(Level.SEVERE, "2PC Coordinator [COMMIT-FAIL] - Commit failed, rolling back transaction: " + transactionId, e);
+                // Rollback both resources
                 rollbackMinIO(transactionId);
-                throw new RuntimeException("Failed to commit MinIO transaction", e);
+                rollbackDatabase(transactionId);
+                throw new RuntimeException("Failed to commit transaction", e);
             }
         } finally {
             lock.unlock();
@@ -186,6 +247,9 @@ public class DistributedTransactionManager {
                 return;
             }
             
+            // 2PC Coordinator Log: DECISION - ROLLBACK
+            LOGGER.info("2PC Coordinator [DECISION: ROLLBACK] - Rolling back transaction: " + transactionId);
+            
             // Rollback MinIO
             rollbackMinIO(transactionId);
             
@@ -195,7 +259,8 @@ public class DistributedTransactionManager {
             // Clean up transaction state
             transactionStates.remove(transactionId);
             
-            LOGGER.info("Transaction rolled back: " + transactionId);
+            // 2PC Coordinator Log: ROLLBACK completed
+            LOGGER.info("2PC Coordinator [ROLLBACK-COMPLETE] - Transaction rolled back: " + transactionId);
         } finally {
             lock.unlock();
         }
@@ -228,11 +293,41 @@ public class DistributedTransactionManager {
     }
     
     /**
+     * Phase 2: Commit database transaction explicitly
+     * Database transaction is already in progress from Phase 1 (import)
+     * This method ensures the transaction will commit (by not calling setRollbackOnly)
+     * @param transactionId Transaction ID
+     */
+    @TransactionAttribute(TransactionAttributeType.REQUIRED)
+    public void commitDatabase(String transactionId) {
+        // Database commit happens automatically when the JTA transaction completes
+        // The import transaction from Phase 1 will be committed when this method returns
+        // We just need to ensure rollbackOnly is not set
+        if (sessionContext.getRollbackOnly()) {
+            LOGGER.warning("Phase 2 (Commit) - Database: Transaction was marked for rollback, cannot commit: " + transactionId);
+            throw new IllegalStateException("Cannot commit database transaction - it was marked for rollback");
+        }
+        LOGGER.info("Phase 2 (Commit) - Database: Transaction will be committed: " + transactionId);
+    }
+    
+    /**
+     * Rollback database transaction
+     * Marks current JTA transaction for rollback
+     * @param transactionId Transaction ID
+     */
+    @TransactionAttribute(TransactionAttributeType.REQUIRED)
+    public void rollbackDatabase(String transactionId) {
+        sessionContext.setRollbackOnly();
+        LOGGER.info("Phase 2 (Rollback) - Database: Transaction marked for rollback: " + transactionId);
+    }
+    
+    /**
      * Handle database failure - rollback MinIO
      */
     public void handleDatabaseFailure(String transactionId) {
         LOGGER.severe("Database failure detected for transaction: " + transactionId);
         rollbackMinIO(transactionId);
+        rollbackDatabase(transactionId);
         transactionStates.remove(transactionId);
     }
     
