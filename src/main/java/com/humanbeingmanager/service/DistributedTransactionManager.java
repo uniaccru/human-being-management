@@ -266,13 +266,6 @@ public class DistributedTransactionManager {
         rollbackDatabase(transactionId);
         transactionStates.remove(transactionId);
     }
-    
-    //откат транзакции при ошибках бл
-    @TransactionAttribute(TransactionAttributeType.REQUIRED)
-    public void handleBusinessLogicFailure(String transactionId) {
-        LOGGER.severe("Business logic failure detected for transaction: " + transactionId);
-        rollback(transactionId);
-    }
 
     private String generateTransactionId() {
         return "txn_" + System.currentTimeMillis() + "_" + Thread.currentThread().getId() + "_" + 

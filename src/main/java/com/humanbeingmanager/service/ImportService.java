@@ -44,7 +44,7 @@ public class ImportService {
     @Resource
     private SessionContext sessionContext;
 
-    @TransactionAttribute(TransactionAttributeType.REQUIRED)
+    @TransactionAttribute(TransactionAttributeType.MANDATORY)
     public ImportResultDto importHumanBeings(List<HumanBeingDto> humanBeingDtos, String transactionId) {
         LOGGER.log(Level.INFO, "Starting import of {0} HumanBeings (transaction: {1})", 
                    new Object[]{humanBeingDtos.size(), transactionId});
