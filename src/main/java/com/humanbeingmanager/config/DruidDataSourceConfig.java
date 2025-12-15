@@ -19,15 +19,14 @@ public class DruidDataSourceConfig {
     
     private static final String JNDI_NAME = "java:/PostgresDruidDS";
     
-    private DataSource dataSource; //здесь храним ссылку на пул соединений
+    private DataSource dataSource; 
     
     @PostConstruct
     public void init() {
         try {
             LOGGER.info("Lookup Druid DataSource");
             Context ctx = new InitialContext();
-            dataSource = (DataSource) ctx.lookup(JNDI_NAME); //ищем готовый датасурс по имени 
-            //найди в контексте JNDI по имени -> преобразуй его к датасурс -> сохрани ссылку в переменную
+            dataSource = (DataSource) ctx.lookup(JNDI_NAME); 
             LOGGER.info("Found datasource in JNDI");
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to initialize Druid Connection Pool", e);
@@ -38,14 +37,14 @@ public class DruidDataSourceConfig {
     @PreDestroy
     public void destroy() {
         try {
-            dataSource = null; //обнуляем ссылку на датасурс. не закрываем пул, вайлдфлай сделает это сам
+            dataSource = null; 
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Error closing Druid Connection Pool", e);
         }
     }
     
     public DataSource getDruidDataSource() {
-        return dataSource; //метод для получение датасурс другими частями приложения
+        return dataSource;
     }
 }
 

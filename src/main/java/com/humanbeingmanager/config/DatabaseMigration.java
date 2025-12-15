@@ -12,9 +12,7 @@ import java.sql.Statement;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
-/**
- * Выполняет миграции базы данных при старте приложения
- */
+
 @Singleton
 @Startup
 public class DatabaseMigration {
@@ -33,12 +31,10 @@ public class DatabaseMigration {
             try (Connection conn = dataSource.getConnection();
                  Statement stmt = conn.createStatement()) {
                 
-                // Добавление колонки file_key в таблицу import_history, если её нет
                 stmt.execute("ALTER TABLE import_history ADD COLUMN IF NOT EXISTS file_key VARCHAR(255)");
                 LOGGER.info("Migration completed: file_key column added to import_history table");
                 
             } catch (Exception e) {
-                // Игнорируем ошибку, если колонка уже существует или таблица не существует
                 String errorMsg = e.getMessage();
                 if (errorMsg != null && (errorMsg.contains("already exists") || errorMsg.contains("duplicate"))) {
                     LOGGER.info("Migration objects already exist - skipping: " + errorMsg);
@@ -50,7 +46,6 @@ public class DatabaseMigration {
             LOGGER.info("Database migration finished");
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error during database migration", e);
-            // Не бросаем исключение, чтобы приложение могло запуститься
         }
     }
 }

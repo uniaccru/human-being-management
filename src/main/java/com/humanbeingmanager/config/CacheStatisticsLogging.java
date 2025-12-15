@@ -14,6 +14,4 @@ public @interface CacheStatisticsLogging {
 
 
 
-//интерфейс-аннотация для приклеивания перехватчика логирования к классу
-
 

@@ -22,7 +22,6 @@ public class CacheStatisticsConfig {
         return enabled;
     }
     
-    //вызываем этот метод чтоб включить логирование
     public void setStatisticsEnabled(boolean enabled) {
         this.enabled = enabled;
         System.setProperty(CACHE_STATISTICS_ENABLED_PROP, String.valueOf(enabled));

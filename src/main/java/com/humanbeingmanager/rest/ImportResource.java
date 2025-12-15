@@ -222,10 +222,11 @@ public class ImportResource {
         }
     }
     
+    //точка входа
     @POST
     @Path("/humanbeings/file")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response importHumanBeingsFromFile(MultipartFormDataInput input) {
+    public Response importHumanBeingsFromFile(MultipartFormDataInput input) { 
         
         LOGGER.info("========== START FILE IMPORT ==========");
         LOGGER.info("Timestamp: " + new java.util.Date());
@@ -309,7 +310,7 @@ public class ImportResource {
                               .build();
             }
             
-            // Phase 1: Prepare Database - check readiness first
+            // Phase 1: Prepare Database - проверяем готовность
             LOGGER.info("Phase 1 (Prepare) - Database: Checking readiness for transaction: " + transactionId);
             boolean dbPrepared = false;
             try {
@@ -329,7 +330,7 @@ public class ImportResource {
                               .build();
             }
             
-            // Phase 1: Execute database import (in JTA transaction that will be committed in Phase 2)
+            // Phase 1: выполнить импорт внутри jtaaa транзакциии 
             LOGGER.info("Phase 1 (Prepare) - Database: Executing import for transaction: " + transactionId);
             LOGGER.info("Number of HumanBeings to import: " + humanBeings.size());
             ImportResultDto result;
@@ -339,7 +340,6 @@ public class ImportResource {
                 LOGGER.info("Import completed. Success: " + result.isSuccess());
                 
                 if (!result.isSuccess()) {
-                    // If import failed, rollback
                     LOGGER.warning("Database import failed, rolling back transaction: " + transactionId);
                     transactionManager.handleDatabaseFailure(transactionId);
                     return Response.status(Response.Status.BAD_REQUEST)
@@ -356,19 +356,17 @@ public class ImportResource {
                               .build();
             }
             
-            // Phase 2: Commit - commit both MinIO and database
+            // Phase 2 - commit both
             try {
                 fileKey = transactionManager.commit(transactionId);
                 LOGGER.info("Phase 2 (Commit) - Transaction committed: " + transactionId + ", File key: " + fileKey);
             } catch (Exception e) {
                 LOGGER.log(Level.SEVERE, "Phase 2 (Commit) - Failed", e);
-                // Transaction manager will handle rollback
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                               .entity(ApiResponseDto.error("Failed to commit transaction: " + e.getMessage()))
                               .build();
             }
             
-            // Save import history
             String username = System.getProperty("user.name", "Unknown");
             String status = result.isSuccess() ? "SUCCESS" : "FAILED";
             ImportHistory history = new ImportHistory(
@@ -393,7 +391,7 @@ public class ImportResource {
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error importing HumanBeings from file", e);
             
-            // Rollback transaction if it was started
+            //откат транзакции если она была начата
             if (transactionId != null) {
                 try {
                     transactionManager.rollback(transactionId);

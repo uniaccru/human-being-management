@@ -7,18 +7,17 @@ import java.util.logging.Logger;
 
 
 @Interceptor 
-@CacheStatisticsLogging //будет срабатывать везде где естьб эта аннтоация
+@CacheStatisticsLogging 
 public class CacheStatisticsInterceptor {
     
     private static final Logger LOGGER = Logger.getLogger(CacheStatisticsInterceptor.class.getName());
     
-    //проверяет свойство включено ли логирование
+    
     private static boolean isStatisticsEnabled() {
         String propValue = System.getProperty("cache.statistics.enabled", "false");
         return Boolean.parseBoolean(propValue);
     }
     
-    //будет вызван до и после каждого метода
     @AroundInvoke
     public Object logCacheStatistics(InvocationContext context) throws Exception {
         boolean enabled = isStatisticsEnabled();
@@ -31,7 +30,7 @@ public class CacheStatisticsInterceptor {
         
         if (!enabled) {
             return context.proceed();
-        } //если выключено то пропускаем
+        } 
         
         long startTime = System.currentTimeMillis();
         
