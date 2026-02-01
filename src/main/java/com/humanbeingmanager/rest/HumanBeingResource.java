@@ -222,7 +222,7 @@ public class HumanBeingResource {
 
             try {
                 HumanBeing humanBeing = mapper.toEntity(humanBeingDto);
-                humanBeingService.createHumanBeing(humanBeing);
+                humanBeingService.validateHumanBeingOnly(humanBeing);
                 return Response.ok(ApiResponseDto.success("Validation successful")).build();
             } catch (ValidationException e) {
                 return Response.ok(ApiResponseDto.validationError(e.getMessage())).build();

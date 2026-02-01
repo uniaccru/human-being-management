@@ -91,7 +91,7 @@
             <version>3.1.3</version>
         </dependency>
         
-        <!-- RESTEasy multipart support (not provided by WildFly by default) -->
+        <!-- RESTEasy multipart support for multipart/form-data (e.g. file upload) -->
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
             <artifactId>resteasy-multipart-provider</artifactId>
@@ -103,14 +103,6 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
             <version>2.14.1</version>
-        </dependency>
-
-        <!-- RESTEasy Multipart - provided by WildFly -->
-        <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-multipart-provider</artifactId>
-            <version>6.2.4.Final</version>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>

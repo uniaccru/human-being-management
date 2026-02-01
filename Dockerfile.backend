@@ -1,4 +1,4 @@
-FROM openjdk:11-jdk-slim
+FROM eclipse-temurin:17-jdk
 
 WORKDIR /app
 
@@ -20,4 +20,5 @@ ENV PGHOST=db
 ENV PGPORT=5432
 ENV PGDATABASE=humanbeingdb
 
-CMD ["mvn", "jetty:run", "-Djetty.port=8080", "-Djetty.host=0.0.0.0"]
+# Run pre-built WAR (no Maven recompile on container start)
+CMD ["mvn", "jetty:run-war", "-Djetty.port=8080", "-Djetty.host=0.0.0.0"]

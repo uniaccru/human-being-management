@@ -60,6 +60,20 @@ public class HumanBeingService {
     @Resource
     private SessionContext sessionContext;
 
+    /**
+     * Validates HumanBeing without persisting. Use for pre-submit validation only.
+     * @throws ValidationException if validation or business rules fail
+     */
+    public void validateHumanBeingOnly(HumanBeing humanBeing) throws ValidationException {
+        LOGGER.log(Level.INFO, "Validating HumanBeing (no persist): {0}", humanBeing != null ? humanBeing.getName() : "null");
+        if (humanBeing.getCreationDate() == null) {
+            humanBeing.setCreationDate(new java.util.Date());
+        }
+        businessRulesValidator.applyMachineGunDefault(humanBeing);
+        validateHumanBeing(humanBeing);
+        validateBusinessRules(humanBeing, false, null);
+    }
+
     @TransactionAttribute(TransactionAttributeType.REQUIRED)
     public HumanBeing createHumanBeing(HumanBeing humanBeing) throws ValidationException {
         LOGGER.log(Level.INFO, "Creating new HumanBeing: {0}", humanBeing.getName());

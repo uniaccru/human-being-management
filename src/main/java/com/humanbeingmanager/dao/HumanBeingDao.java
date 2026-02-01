@@ -5,9 +5,16 @@ import jakarta.ejb.Stateless;
 import jakarta.persistence.*;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Stateless
 public class HumanBeingDao {
+
+    /** Allowed HumanBeing field names for filter/sort to prevent JPQL injection. */
+    private static final Set<String> ALLOWED_FILTER_SORT_COLUMNS = Set.of(
+            "id", "name", "creationDate", "realHero", "hasToothpick", "mood",
+            "impactSpeed", "soundtrackName", "minutesOfWaiting", "weaponType"
+    );
 
     @PersistenceContext(unitName = "HumanBeingPU", type = PersistenceContextType.TRANSACTION)
     private EntityManager entityManager;
@@ -18,10 +25,7 @@ public class HumanBeingDao {
     }
 
     public Optional<HumanBeing> findById(Long id) {
-        java.util.logging.Logger logger = java.util.logging.Logger.getLogger(HumanBeingDao.class.getName());
-        logger.info("HumanBeingDao.findById(" + id + ") - checking L2 cache...");
-        HumanBeing hb = entityManager.find(HumanBeing.class, id); // uses L2 cache when enabled
-        logger.info("HumanBeingDao.findById(" + id + ") - result: " + (hb != null ? "found" : "not found"));
+        HumanBeing hb = entityManager.find(HumanBeing.class, id);
         return Optional.ofNullable(hb);
     }
 
@@ -39,29 +43,35 @@ public class HumanBeingDao {
 
     public List<HumanBeing> findAll(int page, int size, String filterColumn, String filterValue, String sortColumn, String sortDirection) {
         StringBuilder queryBuilder = new StringBuilder("SELECT h FROM HumanBeing h");
-        
-        if (filterColumn != null && filterValue != null && !filterValue.trim().isEmpty()) {
-            queryBuilder.append(" WHERE h.").append(filterColumn).append(" = :filterValue");
+        String safeFilterColumn = isAllowedColumn(filterColumn) ? filterColumn : null;
+        String safeSortColumn = isAllowedColumn(sortColumn) ? sortColumn : null;
+
+        if (safeFilterColumn != null && filterValue != null && !filterValue.trim().isEmpty()) {
+            queryBuilder.append(" WHERE h.").append(safeFilterColumn).append(" = :filterValue");
         }
-        
-        if (sortColumn != null && !sortColumn.trim().isEmpty()) {
-            queryBuilder.append(" ORDER BY h.").append(sortColumn);
+
+        if (safeSortColumn != null) {
+            queryBuilder.append(" ORDER BY h.").append(safeSortColumn);
             if ("desc".equalsIgnoreCase(sortDirection)) {
                 queryBuilder.append(" DESC");
             } else {
                 queryBuilder.append(" ASC");
             }
         }
-        
+
         TypedQuery<HumanBeing> query = entityManager.createQuery(queryBuilder.toString(), HumanBeing.class);
-        
-        if (filterColumn != null && filterValue != null && !filterValue.trim().isEmpty()) {
+
+        if (safeFilterColumn != null && filterValue != null && !filterValue.trim().isEmpty()) {
             query.setParameter("filterValue", filterValue);
         }
-        
+
         query.setFirstResult(page * size);
         query.setMaxResults(size);
         return query.getResultList();
+    }
+
+    private static boolean isAllowedColumn(String column) {
+        return column != null && !column.trim().isEmpty() && ALLOWED_FILTER_SORT_COLUMNS.contains(column.trim());
     }
 
     public HumanBeing update(HumanBeing humanBeing) {
@@ -93,20 +103,20 @@ public class HumanBeingDao {
     }
 
 
-    //count with filtering
     public Long count(String filterColumn, String filterValue) {
         StringBuilder queryBuilder = new StringBuilder("SELECT COUNT(h) FROM HumanBeing h");
-        
-        if (filterColumn != null && filterValue != null && !filterValue.trim().isEmpty()) {
-            queryBuilder.append(" WHERE h.").append(filterColumn).append(" = :filterValue");
+        String safeFilterColumn = isAllowedColumn(filterColumn) ? filterColumn : null;
+
+        if (safeFilterColumn != null && filterValue != null && !filterValue.trim().isEmpty()) {
+            queryBuilder.append(" WHERE h.").append(safeFilterColumn).append(" = :filterValue");
         }
-        
+
         TypedQuery<Long> query = entityManager.createQuery(queryBuilder.toString(), Long.class);
 
-        if (filterColumn != null && filterValue != null && !filterValue.trim().isEmpty()) {
+        if (safeFilterColumn != null && filterValue != null && !filterValue.trim().isEmpty()) {
             query.setParameter("filterValue", filterValue);
         }
-        
+
         return query.getSingleResult();
     }
 

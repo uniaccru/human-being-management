@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: humanbeingdb
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -29,7 +29,7 @@ services:
     environment:
       DATABASE_URL: jdbc:postgresql://db:5432/humanbeingdb
       PGUSER: postgres
-      PGPASSWORD: password
+      PGPASSWORD: ${POSTGRES_PASSWORD:-password}
       PGHOST: db
       PGPORT: 5432
       PGDATABASE: humanbeingdb

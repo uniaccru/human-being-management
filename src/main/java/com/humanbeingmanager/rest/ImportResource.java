@@ -29,86 +29,6 @@ import java.util.logging.Level;
 public class ImportResource {
 
     private static final Logger LOGGER = Logger.getLogger(ImportResource.class.getName());
-    
-    @GET
-    @Path("/test-minio")
-    public Response testMinIOConnection() {
-        try {
-            String endpoint = System.getenv("MINIO_ENDPOINT");
-            String accessKey = System.getenv("MINIO_ACCESS_KEY");
-            String secretKey = System.getenv("MINIO_SECRET_KEY");
-            String bucketName = System.getenv("MINIO_BUCKET_NAME");
-            
-            LOGGER.info("=== MinIO Configuration Test ===");
-            LOGGER.info("MINIO_ENDPOINT: " + (endpoint != null ? endpoint : "NOT SET"));
-            LOGGER.info("MINIO_ACCESS_KEY: " + (accessKey != null ? "SET (length: " + accessKey.length() + ")" : "NOT SET"));
-            LOGGER.info("MINIO_SECRET_KEY: " + (secretKey != null ? "SET (length: " + secretKey.length() + ")" : "NOT SET"));
-            LOGGER.info("MINIO_BUCKET_NAME: " + (bucketName != null ? bucketName : "NOT SET"));
-            
-            StringBuilder response = new StringBuilder();
-            response.append("{\"status\":\"ok\",");
-            response.append("\"endpoint\":\"").append(endpoint != null ? endpoint : "NOT SET").append("\",");
-            response.append("\"accessKey\":\"").append(accessKey != null ? "SET" : "NOT SET").append("\",");
-            response.append("\"secretKey\":\"").append(secretKey != null ? "SET" : "NOT SET").append("\",");
-            response.append("\"bucketName\":\"").append(bucketName != null ? bucketName : "NOT SET").append("\",");
-            
-            // пробуем подключиться с защитой от таймаутаа
-            boolean minioConnected = false;
-            String minioError = null;
-            String serviceBucket = null;
-            try {
-                if (minIOService != null) {
-                    serviceBucket = minIOService.getBucketName();
-                    
-                    //проверяем существует ли файл что проверить соединение
-                    try {
-                        boolean exists = minIOService.fileExists("__test_connection_file_that_does_not_exist__");
-                        minioConnected = true;
-                        LOGGER.info("MinIO connection: SUCCESS (tested via fileExists)");
-                    } catch (Exception testEx) {
-                        Throwable cause = testEx.getCause();
-                        if (cause instanceof java.util.concurrent.TimeoutException) {
-                            minioError = "Connection timeout: MinIO is not reachable at " + endpoint + 
-                                       ". Check if MinIO is running and accessible from WildFly server.";
-                        } else if (cause instanceof java.net.ConnectException) {
-                            minioError = "Connection refused: Cannot connect to MinIO at " + endpoint + 
-                                       ". Check if MinIO is running and the endpoint is correct.";
-                        } else {
-                            minioError = "Connection test failed: " + testEx.getMessage();
-                        }
-                        LOGGER.log(Level.WARNING, "MinIO connection test failed", testEx);
-                    }
-                } else {
-                    minioError = "MinIOService is null - MinIO client not initialized";
-                    LOGGER.warning("MinIOService is null");
-                }
-            } catch (Exception e) {
-                Throwable cause = e.getCause();
-                if (cause instanceof java.util.concurrent.TimeoutException) {
-                    minioError = "Connection timeout: MinIO is not reachable at " + endpoint + 
-                               ". Check if MinIO is running and accessible from WildFly server.";
-                } else if (cause instanceof java.net.ConnectException) {
-                    minioError = "Connection refused: Cannot connect to MinIO at " + endpoint + 
-                               ". Check if MinIO is running and the endpoint is correct.";
-                } else {
-                    minioError = e.getClass().getSimpleName() + ": " + e.getMessage();
-                }
-                LOGGER.log(Level.SEVERE, "MinIO connection failed", e);
-            }
-            
-            response.append("\"serviceBucket\":\"").append(serviceBucket != null ? serviceBucket : "null").append("\",");
-            response.append("\"minioConnected\":").append(minioConnected).append(",");
-            response.append("\"minioError\":\"").append(minioError != null ? minioError.replace("\"", "'").replace("\n", " ") : "null").append("\"");
-            response.append("}");
-            
-            return Response.ok(response.toString()).build();
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error testing MinIO connection", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                          .entity("{\"error\":\"" + e.getMessage().replace("\"", "'").replace("\n", " ") + "\"}")
-                          .build();
-        }
-    }
 
     @EJB
     private ImportService importService;
@@ -138,7 +58,7 @@ public class ImportResource {
                               .build();
             }
 
-            //для обратной совместимости, бех файлового хранилища
+            // Backward compatibility when file storage is not used
             String transactionId = null;
             ImportResultDto result = importService.importHumanBeings(humanBeings, transactionId);
 
@@ -222,7 +142,6 @@ public class ImportResource {
         }
     }
     
-    //точка входа
     @POST
     @Path("/humanbeings/file")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
@@ -266,7 +185,7 @@ public class ImportResource {
                 contentType = "application/json";
             }
             
-            // читаем содержание файля
+            // Read file content into buffer
             java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
             byte[] data = new byte[8192];
             int nRead;
@@ -279,7 +198,7 @@ public class ImportResource {
             LOGGER.log(Level.INFO, "POST /api/import/humanbeings/file - Uploading file: {0}, size: {1}", 
                       new Object[]{fileName, fileSize});
             
-            // валидируем джсон перед загрузкой
+            // Validate JSON before upload
             List<HumanBeingDto> humanBeings;
             try {
                 String fileContent = new String(fileBytes);
@@ -297,7 +216,7 @@ public class ImportResource {
                               .build();
             }
             
-            // Phase 1: Prepare MinIO - загружаем с temp key
+            // Phase 1: Prepare MinIO (upload with temp key)
             try {
                 java.io.ByteArrayInputStream fileStream = new java.io.ByteArrayInputStream(fileBytes);
                 transactionId = transactionManager.prepareMinIO(fileStream, contentType, fileSize);
@@ -310,7 +229,7 @@ public class ImportResource {
                               .build();
             }
             
-            // Phase 1: Prepare Database - проверяем готовность
+            // Phase 1: Prepare Database (check readiness)
             LOGGER.info("Phase 1 (Prepare) - Database: Checking readiness for transaction: " + transactionId);
             boolean dbPrepared = false;
             try {
@@ -330,7 +249,6 @@ public class ImportResource {
                               .build();
             }
             
-            // Phase 1: Execute import within manually managed transaction (transaction will NOT be committed yet)
             LOGGER.info("Phase 1 (Prepare) - Database: Executing import for transaction: " + transactionId);
             LOGGER.info("Number of HumanBeings to import: " + humanBeings.size());
             ImportResultDto result;
@@ -356,7 +274,7 @@ public class ImportResource {
                               .build();
             }
             
-            // Phase 2: Commit - commit both MinIO and database
+            // Phase 2: Commit (MinIO and database)
             try {
                 fileKey = transactionManager.commit(transactionId);
                 LOGGER.info("Phase 2 (Commit) - Transaction committed: " + transactionId + ", File key: " + fileKey);
@@ -461,11 +379,15 @@ public class ImportResource {
     }
     
     private String getFileName(InputPart inputPart) {
-        String[] contentDisposition = inputPart.getHeaders().getFirst("Content-Disposition").split(";");
+        String header = inputPart.getHeaders().getFirst("Content-Disposition");
+        if (header == null || header.isEmpty()) {
+            return "unknown";
+        }
+        String[] contentDisposition = header.split(";");
         for (String filename : contentDisposition) {
             if (filename.trim().startsWith("filename")) {
                 String[] name = filename.split("=");
-                return name[1].trim().replaceAll("\"", "");
+                return name.length > 1 ? name[1].trim().replaceAll("\"", "") : "unknown";
             }
         }
         return "unknown";
